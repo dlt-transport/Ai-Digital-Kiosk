@@ -1,6 +1,7 @@
 /**
  * 🚀 สมองกลน้องนำทาง - Ultimate Hybrid Version (Fixed & Secured + Advanced Vision)
  * + [NEW] Hybrid Voice System (WAV + TTS) เต็มรูปแบบ (ทักทายคนใหม่ + ทักทายคนเดิม)
+ * + [FIX] แก้ไขปัญหาเสียงทับซ้อนตอนเปิดหน้าคิว (Race Condition Fixed)
  */
 
 // 🎵 1. รวมไฟล์เสียงทักทายคนใหม่
@@ -328,6 +329,7 @@ function playAudioLink(url, callback = null) {
     });
 }
 
+// 🛑 อัปเกรด: แก้ไขเสียงซ้อนใน playAudioSequence
 function playAudioSequence(urls, callback = null) {
     if (!urls || urls.length === 0) {
         if (callback) callback();
@@ -366,23 +368,27 @@ function playAudioSequence(urls, callback = null) {
         window.currentAudio = audio;
         
         audio.onplay = () => {
+            if (window.currentAudio !== audio) return; // 🛑 บล็อกเสียงตีกัน
             window.isBusy = true;
             window.isManualAborted = true;
             if (wakeWordRecognition) try { wakeWordRecognition.abort(); } catch(e) {}
         };
         
         audio.onended = () => {
+            if (window.currentAudio !== audio) return; // 🛑 บล็อกเสียงตีกัน
             currentIndex++;
             playNext(); 
         };
         
         audio.onerror = () => {
+            if (window.currentAudio !== audio) return; // 🛑 บล็อกเสียงตีกัน
             console.warn("⚠️ Audio Sequence Error on:", urls[currentIndex]);
             currentIndex++;
             playNext(); 
         };
         
         audio.play().catch(e => {
+            if (window.currentAudio !== audio) return; // 🛑 บล็อกเสียงตีกัน
             console.error("Audio Sequence Autoplay Blocked:", e);
             currentIndex++;
             playNext();
@@ -1334,5 +1340,52 @@ async function submitFeedback(result) {
         container.innerHTML = "ขอบคุณที่ให้คำแนะนำครับ!";
     } catch (e) {
         console.error("ส่งพลาด:", e);
+    }
+}
+
+// ==========================================
+// 🎟️ ฟังก์ชันควบคุม Popup ระบบคิวงานตรวจสภาพรถ (ฉบับป้องกันเสียงตีกัน)
+// ==========================================
+function openQueueModal() {
+    const modal = document.getElementById('queueModal');
+    if (modal) {
+        // 🛑 บอก AI ว่ามีคนใช้งานแล้ว! เพื่อบล็อกไม่ให้กล้องเด้งเสียงทักทายซ้อนขึ้นมาอีก
+        isAtHome = false;
+        window.hasGreeted = true;
+        
+        // 🔒 ล็อกสถานะระบบ
+        window.isQueueOpen = true;
+        window.isBusy = true; 
+
+        // 🛑 เคลียร์เสียงพูดที่อาจจะค้างอยู่ก่อนหน้านี้ให้เงียบสนิท
+        stopAllSpeech();
+        if (typeof forceStopAllMic === 'function') forceStopAllMic();
+
+        // ปิดเสียง MP3 VIP (ถ้ามี)
+        const vipAudio = document.getElementById('vipGreetingSound');
+        if (vipAudio) {
+            vipAudio.pause();
+            vipAudio.currentTime = 0;
+        }
+
+        modal.style.display = 'flex';
+        updateInteractionTime();
+        
+        const msg = window.currentLang === 'th' ? "กรุณากดคิวเลือกประเภทงานบริการ หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ" : "Please select a service to get your queue ticket.";
+        
+        // 🟢 หน่วงเวลา 100ms ให้ระบบเคลียร์เสียงเก่าให้ตายสนิทก่อน แล้วค่อยเล่นเสียงคิว
+        setTimeout(() => {
+            if (window.currentLang === 'th') {
+                playAudioLink("https://taiyang12300.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
+                    window.isBusy = false; // ปลดล็อกให้ผู้ใช้แตะปุ่มเลือกคิวได้
+                });
+            } else {
+                if (typeof speak === 'function') {
+                    speak(msg, () => { 
+                        window.isBusy = false; 
+                    });
+                }
+            }
+        }, 100);
     }
 }
