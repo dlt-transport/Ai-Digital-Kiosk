@@ -484,7 +484,7 @@
   </div>
 
   <audio id="queueSound" preload="auto">
-    <source src="https://taiyang12300.github.io/sound/ยื่นใบนำทาง.wav" type="audio/mpeg">
+    <source src="https://dlt-transport.github.io/sound/ยื่นใบนำทาง.wav" type="audio/mpeg">
   </audio>
   <video id="video" width="640" height="480" autoplay muted playsinline style="display:none;"></video>
   
@@ -860,7 +860,7 @@
         
         // 🟢 สั่งพูดและจัดการสถานะ Busy ให้จบลงหลังจากพูดจบเท่านั้น (อัปเกรดใช้ .wav)
         if (window.currentLang === 'th') {
-            playAudioLink("https://taiyang12300.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
+            playAudioLink("https://dlt-transport.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
                 window.isBusy = false; // ปลดล็อกให้ผู้ใช้แตะปุ่มเลือกคิวได้
             });
         } else {
@@ -890,7 +890,7 @@ function closeQueueModal() {
         
         // 🟢 เล่นไฟล์เสียงแทน TTS เมื่อปิดหน้าคิว (อัปเกรดใช้ .wav)
         if (window.currentLang === 'th') {
-            playAudioLink("https://taiyang12300.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav", () => {
+            playAudioLink("https://dlt-transport.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav", () => {
                 // หลังจากบอกลาจบ ค่อยปลดล็อกทุกอย่างและเริ่ม WakeWord ใหม่
                 window.isBusy = false;
                 window.allowWakeWord = true;
@@ -925,7 +925,7 @@ function closeQueueModal() {
   <!-- 🌟 เพิ่มไฟล์เสียง MP3 ที่เตรียมไว้ตรงนี้ -->
   <audio id="vipGreetingSound" preload="auto">
     <!-- เปลี่ยน URL ตรง src ให้เป็นลิงก์ไฟล์ MP3 ของคุณ -->
-    <source src="https://taiyang12300.github.io/sound/nongnamtang.mp3" type="audio/mpeg">
+    <source src="https://dlt-transport.github.io/sound/nongnamtang.mp3" type="audio/mpeg">
   </audio>
 
     <script>
