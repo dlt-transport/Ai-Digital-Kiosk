@@ -6,30 +6,30 @@
 
 // 🎵 1. รวมไฟล์เสียงทักทายคนใหม่
 const GREETING_TIME_SOUNDS = {
-    morning: "https://taiyang12300.github.io/sound/สวัสดีตอนเช้าครับ.wav",
-    noon: "https://taiyang12300.github.io/sound/สวัสดีตอนเที่ยงครับ.wav",
-    afternoon: "https://taiyang12300.github.io/sound/สวัสดีตอนบ่ายครับ.wav",
-    evening: "https://taiyang12300.github.io/sound/สวัสดีตอนเย็นครับ.wav"
+    morning: "https://dlt-transport.github.io/sound/สวัสดีตอนเช้าครับ.wav",
+    noon: "https://dlt-transport.github.io/sound/สวัสดีตอนเที่ยงครับ.wav",
+    afternoon: "https://dlt-transport.github.io/sound/สวัสดีตอนบ่ายครับ.wav",
+    evening: "https://dlt-transport.github.io/sound/สวัสดีตอนเย็นครับ.wav"
 };
 
 const GREETING_ENDING_SOUNDS = [
-    { text: "น้องนำทางยินดีให้บริการครับ", url: "https://taiyang12300.github.io/sound/น้องนำทางยินดีให้บริการครับ.wav" },
-    { text: "มีอะไรให้ช่วยไหมครับ?", url: "https://taiyang12300.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav" },
-    { text: "วันนี้มาติดต่อเรื่องอะไรครับ?", url: "https://taiyang12300.github.io/sound/วันนี้มาติดต่อเรื่องอะไรครับ.wav" }
+    { text: "น้องนำทางยินดีให้บริการครับ", url: "https://dlt-transport.github.io/sound/น้องนำทางยินดีให้บริการครับ.wav" },
+    { text: "มีอะไรให้ช่วยไหมครับ?", url: "https://dlt-transport.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav" },
+    { text: "วันนี้มาติดต่อเรื่องอะไรครับ?", url: "https://dlt-transport.github.io/sound/วันนี้มาติดต่อเรื่องอะไรครับ.wav" }
 ];
 
 // 🎵 2. รวมไฟล์เสียงทักทายคนเดิม (Welcome Back)
 const WELCOME_BACK_PREFIXES = {
-    male: "https://taiyang12300.github.io/sound/คุณผู้ชาย.wav",
-    female: "https://taiyang12300.github.io/sound/คุณผู้หญิง.wav",
-    neutral: "https://taiyang12300.github.io/sound/คุณครับ.wav"
+    male: "https://dlt-transport.github.io/sound/คุณผู้ชาย.wav",
+    female: "https://dlt-transport.github.io/sound/คุณผู้หญิง.wav",
+    neutral: "https://dlt-transport.github.io/sound/คุณครับ.wav"
 };
 
 const WELCOME_BACK_PHRASES = [
-    { text: "การติดต่อธุระราบรื่นดีไหมครับ มีอะไรให้ผมช่วยเพิ่มเติมสอบถามได้เลยนะครับ", url: "https://taiyang12300.github.io/sound/การติดต่อธุระราบรื่นดีไหมครับ_มีอะไรให้ผมช่วยเพิ่มเติมสอบถามได้เลยนะครับ.wav" },
-    { text: "ยังติดต่อธุระไม่เสร็จใช่ไหมครับ มีอะไรให้น้องนำทางช่วยเพิ่มเติมไหมครับ", url: "https://taiyang12300.github.io/sound/ยังติดต่อธุระไม่เสร็จใช่ไหมครับ_มีอะไรให้น้องนำทางช่วยเพิ่มเติมไหมครับ.wav" },
-    { text: "ขาดเหลือข้อมูลส่วนไหนหรือเปล่าครับ ให้ผมช่วยเหลือเพิ่มเติมได้นะครับ", url: "https://taiyang12300.github.io/sound/ขาดเหลือข้อมูลส่วนไหนหรือเปล่าครับ_ให้ผมช่วยเหลือเพิ่มเติมได้นะครับ.wav" },
-    { text: "เจอกันอีกแล้วนะครับ ติดขัดขั้นตอนไหน สอบถามน้องนำทางได้เลยครับ", url: "https://taiyang12300.github.io/sound/เจอกันอีกแล้วนะครับ_ติดขัดขั้นตอนไหน_สอบถามน้องนำทางได้เลยครับ.wav" }
+    { text: "การติดต่อธุระราบรื่นดีไหมครับ มีอะไรให้ผมช่วยเพิ่มเติมสอบถามได้เลยนะครับ", url: "https://dlt-transport.github.io/sound/การติดต่อธุระราบรื่นดีไหมครับ_มีอะไรให้ผมช่วยเพิ่มเติมสอบถามได้เลยนะครับ.wav" },
+    { text: "ยังติดต่อธุระไม่เสร็จใช่ไหมครับ มีอะไรให้น้องนำทางช่วยเพิ่มเติมไหมครับ", url: "https://dlt-transport.github.io/sound/ยังติดต่อธุระไม่เสร็จใช่ไหมครับ_มีอะไรให้น้องนำทางช่วยเพิ่มเติมไหมครับ.wav" },
+    { text: "ขาดเหลือข้อมูลส่วนไหนหรือเปล่าครับ ให้ผมช่วยเหลือเพิ่มเติมได้นะครับ", url: "https://dlt-transport.github.io/sound/ขาดเหลือข้อมูลส่วนไหนหรือเปล่าครับ_ให้ผมช่วยเหลือเพิ่มเติมได้นะครับ.wav" },
+    { text: "เจอกันอีกแล้วนะครับ ติดขัดขั้นตอนไหน สอบถามน้องนำทางได้เลยครับ", url: "https://dlt-transport.github.io/sound/เจอกันอีกแล้วนะครับ_ติดขัดขั้นตอนไหน_สอบถามน้องนำทางได้เลยครับ.wav" }
 ];
 
 window.localDatabase = null;
@@ -563,7 +563,7 @@ function restartIdleTimer() {
 // --- ระบบดวงตา AI (Face-API) ---
 
 async function loadFaceModels() {
-    const MODEL_URL = 'https://taiyang12300.github.io/model/';
+    const MODEL_URL = 'https://dlt-transport.github.io/model/';
     try {
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
@@ -788,7 +788,7 @@ function startLicenseCheck(type) {
     
     // 🟢 อัปเกรด: ใช้เสียง .wav แทน TTS
     if (isThai) {
-        playAudioLink("https://taiyang12300.github.io/sound/ใบขับขี่เดิมของท่าน_เป็นแบบไหนครับ.wav", () => { 
+        playAudioLink("https://dlt-transport.github.io/sound/ใบขับขี่เดิมของท่าน_เป็นแบบไหนครับ.wav", () => { 
             window.isBusy = false; 
         });
     } else {
@@ -810,7 +810,7 @@ function selectLicenseExpiry(type, period) {
     
     // 🟢 อัปเกรด: ใช้เสียง .wav แทน TTS
     if (isThai) {
-        playAudioLink("https://taiyang12300.github.io/sound/ใบขับขี่ของท่าน_หมดอายุหรือยังครับ.wav", () => { 
+        playAudioLink("https://dlt-transport.github.io/sound/ใบขับขี่ของท่าน_หมดอายุหรือยังครับ.wav", () => { 
             window.isBusy = false; 
         });
     } else {
@@ -867,7 +867,7 @@ function showLicenseChecklist(type, period, expiry) {
     
     // 🟢 อัปเกรด: ใช้เสียง .wav แทน TTS
     if (isThai) {
-        playAudioLink("https://taiyang12300.github.io/sound/กรุณาตรวจสอบเอกสารให้ครบถ้วน_เพื่อพิมพ์ใบนำทางครับ.wav");
+        playAudioLink("https://dlt-transport.github.io/sound/กรุณาตรวจสอบเอกสารให้ครบถ้วน_เพื่อพิมพ์ใบนำทางครับ.wav");
     } else {
         speak("Please check all items to print your guide.");
     }
@@ -935,7 +935,7 @@ function getResponse(userQuery) {
         
         // 🟢 จุดที่ 1: เปลี่ยนมาใช้ไฟล์ .wav สำหรับคำถามประเภทใบขับขี่
         if (window.currentLang === 'th') {
-            playAudioLink("https://taiyang12300.github.io/sound/ใบขับขี่ของท่านเป็นแบบชั่วคราวหรือแบบ5ปีครับ.wav", () => { 
+            playAudioLink("https://dlt-transport.github.io/sound/ใบขับขี่ของท่านเป็นแบบชั่วคราวหรือแบบ5ปีครับ.wav", () => { 
                 window.isBusy = false; 
             });
         } else {
@@ -1000,7 +1000,7 @@ function getResponse(userQuery) {
             
             // 🟢 จุดที่ 2: เปลี่ยนมาใช้ไฟล์ .wav กรณีหาข้อมูลไม่พบ
             if (window.currentLang === 'th') {
-                playAudioLink("https://taiyang12300.github.io/sound/ขออภัยครับ_น้องหาข้อมูลไม่พบ_กรุณาติดต่อเจ้าหน้าที่นะครับ.wav", () => {
+                playAudioLink("https://dlt-transport.github.io/sound/ขออภัยครับ_น้องหาข้อมูลไม่พบ_กรุณาติดต่อเจ้าหน้าที่นะครับ.wav", () => {
                     window.isBusy = false;
                     setTimeout(renderFAQButtons, 1000);
                 });
@@ -1376,7 +1376,7 @@ function openQueueModal() {
         // 🟢 หน่วงเวลา 100ms ให้ระบบเคลียร์เสียงเก่าให้ตายสนิทก่อน แล้วค่อยเล่นเสียงคิว
         setTimeout(() => {
             if (window.currentLang === 'th') {
-                playAudioLink("https://taiyang12300.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
+                playAudioLink("https://dlt-transport.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
                     window.isBusy = false; // ปลดล็อกให้ผู้ใช้แตะปุ่มเลือกคิวได้
                 });
             } else {
