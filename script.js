@@ -1,7 +1,7 @@
 /**
  * 🚀 สมองกลน้องนำทาง - Ultimate Hybrid Version (Fixed & Secured + Advanced Vision)
  * + [NEW] Hybrid Voice System (WAV + TTS) เต็มรูปแบบ (ทักทายคนใหม่ + ทักทายคนเดิม)
- * + [FIX] แก้ไขปัญหาเสียงทับซ้อนตอนเปิดหน้าคิว (Race Condition Fixed)
+ * + [FIX] แก้ไขปัญหาเสียงทับซ้อนตอนเปิดหน้าคิว และป้องกันการทักทายซ้ำหลังปิดหน้าคิว
  */
 
 // 🎵 1. รวมไฟล์เสียงทักทายคนใหม่
@@ -42,6 +42,8 @@ window.isListening = false;
 window.recognition = null;
 window.isManualAborted = false;
 window.currentAudio = null;
+window.audioEndTimer = null;
+window.queueAudioDelayTimer = null;
 
 // ตัวแปรส่วนใบหน้า
 window.detectedGender = 'male';
@@ -158,7 +160,7 @@ function initSpeechRecognition() {
     window.recognition.onend = () => {
         window.isListening = false;
         updateMicUI(false);
-        if (window.isManualAborted || window.isBusy || window.isAudioPlaying) {
+        if (window.isManualAborted || window.isBusy || window.isAudioPlaying || window.isQueueOpen) {
             console.log("🔇 [STT Mic] Stopped. WakeWord won't start — system busy.");
             return;
         }
@@ -180,12 +182,7 @@ function initSpeechRecognition() {
 function toggleListening() {
     const wasListening = window.isListening;
 
-    window.speechSynthesis.cancel();
-    if (window.currentAudio) {
-        window.currentAudio.pause();
-        window.currentAudio = null;
-    }
-    
+    stopAllSpeech();
     if (typeof forceStopAllMic === "function") forceStopAllMic();
     
     if (window.micTimer) clearTimeout(window.micTimer);
@@ -282,85 +279,107 @@ function forceStopAllMic() {
 }
 
 function playAudioLink(url, callback = null) {
-    if (!url) return;
-    window.isBusy = true;
-    window.isAudioPlaying = true;
-    window.isManualAborted = true;
+    if (!url || window.isMuted) {
+        if (callback) callback();
+        return;
+    }
+    // 🛑 เคลียร์เสียงเก่าก่อน แล้วค่อยล็อกสถานะ Busy (ป้องกันช่องว่างที่ทำให้ AI แทรก)
     stopAllSpeech();
     forceStopAllMic();
     if (window.micTimer) clearTimeout(window.micTimer);
+
+    window.isBusy = true;
+    window.isAudioPlaying = true;
+    window.isManualAborted = true;
     updateLottie('talking');
-    if (window.currentAudio) {
-        window.currentAudio.pause();
-    }
+
     const audio = new Audio(url);
     window.currentAudio = audio;
+
     audio.onplay = () => {
+        if (window.currentAudio !== audio) return;
         window.isBusy = true;
+        window.isAudioPlaying = true;
         window.isManualAborted = true;
         if (wakeWordRecognition) try { wakeWordRecognition.abort(); } catch(e) {}
     };
     audio.onended = () => {
+        if (window.currentAudio !== audio) return;
         window.isAudioPlaying = false;
         window.currentAudio = null;
-        setTimeout(() => {
+        if (window.audioEndTimer) clearTimeout(window.audioEndTimer);
+        window.audioEndTimer = setTimeout(() => {
             window.isBusy = false;
             window.isManualAborted = false;
             updateLottie('idle');
             updateInteractionTime();
             if (callback) {
                 callback();
-            } else if (window.allowWakeWord && window.hasGreeted) {
+            } else if (window.allowWakeWord && window.hasGreeted && !window.isQueueOpen) {
                 startWakeWord();
             }
-        }, 1000);
+        }, 800);
     };
     audio.onerror = () => {
+        if (window.currentAudio !== audio) return;
         window.isAudioPlaying = false;
         window.isBusy = false;
         window.isManualAborted = false;
+        window.currentAudio = null;
         updateLottie('idle');
     };
     audio.play().catch(e => {
+        if (window.currentAudio !== audio) return;
         console.error("Audio Play Error:", e);
         window.isBusy = false;
         window.isAudioPlaying = false;
         window.isManualAborted = false;
+        window.currentAudio = null;
+        updateLottie('idle');
     });
 }
 
 // 🛑 อัปเกรด: แก้ไขเสียงซ้อนใน playAudioSequence
 function playAudioSequence(urls, callback = null) {
-    if (!urls || urls.length === 0) {
+    if (!urls || urls.length === 0 || window.isMuted) {
         if (callback) callback();
         return;
     }
     
-    window.isBusy = true;
-    window.isAudioPlaying = true;
-    window.isManualAborted = true;
+    // 🛑 เคลียร์เสียงเก่าก่อน แล้วค่อยล็อกสถานะ Busy
     stopAllSpeech();
     forceStopAllMic();
     if (window.micTimer) clearTimeout(window.micTimer);
+
+    window.isBusy = true;
+    window.isAudioPlaying = true;
+    window.isManualAborted = true;
     updateLottie('talking');
 
     let currentIndex = 0;
 
     function playNext() {
+        if (window.isQueueOpen) {
+            window.isAudioPlaying = false;
+            window.currentAudio = null;
+            return;
+        }
+
         if (currentIndex >= urls.length) {
             window.isAudioPlaying = false;
             window.currentAudio = null;
-            setTimeout(() => {
+            if (window.audioEndTimer) clearTimeout(window.audioEndTimer);
+            window.audioEndTimer = setTimeout(() => {
                 window.isBusy = false;
                 window.isManualAborted = false;
                 updateLottie('idle');
                 updateInteractionTime();
                 if (callback) {
                     callback();
-                } else if (window.allowWakeWord && window.hasGreeted) {
+                } else if (window.allowWakeWord && window.hasGreeted && !window.isQueueOpen) {
                     startWakeWord();
                 }
-            }, 1000);
+            }, 800);
             return;
         }
 
@@ -370,6 +389,7 @@ function playAudioSequence(urls, callback = null) {
         audio.onplay = () => {
             if (window.currentAudio !== audio) return; // 🛑 บล็อกเสียงตีกัน
             window.isBusy = true;
+            window.isAudioPlaying = true;
             window.isManualAborted = true;
             if (wakeWordRecognition) try { wakeWordRecognition.abort(); } catch(e) {}
         };
@@ -412,7 +432,7 @@ function setupWakeWord() {
     wakeWordRecognition.lang = 'th-TH';
 
     wakeWordRecognition.onresult = (event) => {
-        if (!window.allowWakeWord || window.isBusy || window.isListening || !window.hasGreeted) return;
+        if (!window.allowWakeWord || window.isBusy || window.isListening || !window.hasGreeted || window.isQueueOpen) return;
         let transcript = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
             transcript += event.results[i][0].transcript;
@@ -440,15 +460,15 @@ function setupWakeWord() {
     };
 
     wakeWordRecognition.onend = () => {
-        if (window.isManualAborted || window.isBusy || window.isAudioPlaying) {
+        if (window.isManualAborted || window.isBusy || window.isAudioPlaying || window.isQueueOpen) {
             console.log("🔇 [WakeWord] Stay quiet. System is busy or manually aborted.");
             isWakeWordActive = false;
             return;
         }
-        if (window.hasGreeted && personInFrameTime !== null && !window.isBusy && !window.isListening && isWakeWordActive) {
+        if (window.hasGreeted && personInFrameTime !== null && !window.isBusy && !window.isListening && isWakeWordActive && !window.isQueueOpen) {
             setTimeout(() => {
                 try {
-                    if (!window.isBusy && !window.isListening && isWakeWordActive && !window.isManualAborted) {
+                    if (!window.isBusy && !window.isListening && isWakeWordActive && !window.isManualAborted && !window.isQueueOpen) {
                         wakeWordRecognition.start();
                     }
                 } catch(e) {}
@@ -467,7 +487,7 @@ function setupWakeWord() {
 }
 
 function startWakeWord() {
-    if (!window.allowWakeWord || window.isListening || window.isMuted || window.isBusy || !window.hasGreeted) {
+    if (!window.allowWakeWord || window.isListening || window.isMuted || window.isBusy || !window.hasGreeted || window.isQueueOpen) {
         isWakeWordActive = false;
         return;
     }
@@ -484,7 +504,7 @@ function startWakeWord() {
     window.isManualAborted = false;
 
     setTimeout(() => {
-        if (!window.isBusy && !window.isListening && window.allowWakeWord && !window.isManualAborted) {
+        if (!window.isBusy && !window.isListening && window.allowWakeWord && !window.isManualAborted && !window.isQueueOpen) {
             isWakeWordActive = true;
             try {
                 wakeWordRecognition.start();
@@ -511,7 +531,8 @@ function forceUnmute() {
 
 function resetToHome() {
     const now = Date.now();
-    if (window.isBusy || personInFrameTime !== null || (now - lastSeenTime < IDLE_TIME_LIMIT)) {
+    // 🛑 ห้ามรีเซ็ตกลับหน้าโฮมเด็ดขาดถ้ากำลังเปิดหน้าคิว หรือกำลังเล่นเสียงอยู่
+    if (window.isBusy || window.isAudioPlaying || window.isQueueOpen || personInFrameTime !== null || (now - lastSeenTime < IDLE_TIME_LIMIT)) {
         if (!isAtHome) restartIdleTimer();
         return;
     }
@@ -611,7 +632,16 @@ async function detectPerson() {
             const descriptor = face.descriptor;
             const alreadySeen = isAlreadySeen(descriptor);
 
-            if ((now - personInFrameTime) >= 1000 && isAtHome && !window.isBusy && !window.hasGreeted) {
+            // 🛑 หากเปิดหน้าคิวอยู่ ให้จำใบหน้าและอัปเดตเวลาไว้ แต่ห้ามสั่งพูดทักทายเด็ดขาด
+            if (window.isQueueOpen) {
+                rememberFace(descriptor);
+                window.hasGreeted = true;
+                isAtHome = false;
+                lastSeenTime = now;
+                return;
+            }
+
+            if ((now - personInFrameTime) >= 1000 && isAtHome && !window.isBusy && !window.isAudioPlaying && !window.hasGreeted && !window.isQueueOpen) {
                 if (alreadySeen) {
                     console.log("🔁 [Face-Memory] คนเดิมกลับมา ทักทายแบบคุ้นเคย");
                     greetWelcomeBack(); 
@@ -652,8 +682,10 @@ async function detectPerson() {
                     }, WALK_AWAY_DELAY);
                 }
             } else {
-                if (personInFrameTime !== null && (now - lastSeenTime > 8000)) {
-                    console.log("⏱️ ไม่มีคนอยู่หน้าตู้เกิน 8 วินาที (หลังพูดจบ) -> รีเซ็ตกลับหน้าหลัก");
+                // 🟢 ถ้าเปิดหน้าคิวอยู่ ให้ผ่อนผันเวลาเป็น 30 วินาที (เผื่อประชาชนยกมือถือสแกน QR Code บังหน้าตัวเอง)
+                const awayThreshold = window.isQueueOpen ? 30000 : 8000;
+                if (personInFrameTime !== null && (now - lastSeenTime > awayThreshold)) {
+                    console.log(`⏱️ ไม่มีคนอยู่หน้าตู้เกิน ${awayThreshold / 1000} วินาที -> รีเซ็ตกลับหน้าหลัก`);
                     const queueModal = document.getElementById('queueModal');
                     if (queueModal) queueModal.style.display = 'none';
 
@@ -673,7 +705,7 @@ async function detectPerson() {
 
 // 🟢 ทักทายคนใหม่ (WAV 2 ไฟล์ต่อเนื่อง)
 function greetUser() {
-    if (window.hasGreeted || window.isBusy) return;
+    if (window.hasGreeted || window.isBusy || window.isQueueOpen) return;
     forceUnmute();
     isAtHome = false;
     window.hasGreeted = true;
@@ -721,7 +753,7 @@ function greetUser() {
 
 // 🟢 ทักทายคนเดิมที่เดินกลับมา (WAV 2 ไฟล์ต่อเนื่อง)
 function greetWelcomeBack() {
-    if (window.hasGreeted || window.isBusy) return;
+    if (window.hasGreeted || window.isBusy || window.isQueueOpen) return;
     forceUnmute();
     isAtHome = false;
     window.hasGreeted = true;
@@ -778,6 +810,7 @@ function greetWelcomeBack() {
 function startLicenseCheck(type) {
     forceStopAllMic();
     isAtHome = false;
+    window.hasGreeted = true;
     const isThai = window.currentLang === 'th';
     if (type.includes("รถบรรทุก") || type.includes("สาธารณะ")) {
         selectLicenseExpiry(type, '3to3');
@@ -919,6 +952,7 @@ function getResponse(userQuery) {
     stopAllSpeech(); 
     
     isAtHome = false;
+    window.hasGreeted = true;
     updateInteractionTime();
     window.isBusy = true; 
     updateLottie('thinking');
@@ -1080,8 +1114,8 @@ function speak(text, callback = null, isGreeting = false) {
         return;
     }
 
+    stopAllSpeech();
     forceStopAllMic();
-    window.speechSynthesis.cancel();
     window.isBusy = true;
 
     let cleanText = cleanTextForSpeech(text);
@@ -1114,7 +1148,8 @@ function speak(text, callback = null, isGreeting = false) {
         
         if (callback) callback(); 
         
-        setTimeout(() => {
+        if (window.audioEndTimer) clearTimeout(window.audioEndTimer);
+        window.audioEndTimer = setTimeout(() => {
             if (window.isBusy || window.isAudioPlaying || window.isQueueOpen) return;
             
             if (isGreeting) {
@@ -1147,11 +1182,22 @@ function speak(text, callback = null, isGreeting = false) {
 }
 
 function stopAllSpeech() {
+    if (window.audioEndTimer) {
+        clearTimeout(window.audioEndTimer);
+        window.audioEndTimer = null;
+    }
     window.speechSynthesis.cancel();
+    if (typeof responsiveVoice !== 'undefined') {
+        try { responsiveVoice.cancel(); } catch (e) {}
+    }
     if (window.currentAudio) {
         try {
+            window.currentAudio.onplay = null;
+            window.currentAudio.onended = null;
+            window.currentAudio.onerror = null;
             window.currentAudio.pause();
             window.currentAudio.currentTime = 0;
+            window.currentAudio.src = "";
         } catch (e) { console.warn("Audio stop error:", e); }
         window.currentAudio = null;
     }
@@ -1344,20 +1390,21 @@ async function submitFeedback(result) {
 }
 
 // ==========================================
-// 🎟️ ฟังก์ชันควบคุม Popup ระบบคิวงานตรวจสภาพรถ (ฉบับป้องกันเสียงตีกัน)
+// 🎟️ ฟังก์ชันควบคุม Popup ระบบคิวงานตรวจสภาพรถ (ฉบับป้องกันเสียงตีกันและป้องกันทักซ้ำ)
 // ==========================================
 function openQueueModal() {
     const modal = document.getElementById('queueModal');
     if (modal) {
-        // 🛑 บอก AI ว่ามีคนใช้งานแล้ว! เพื่อบล็อกไม่ให้กล้องเด้งเสียงทักทายซ้อนขึ้นมาอีก
+        // 🛑 บอก AI ว่ามีคนใช้งานอยู่หน้าตู้แล้ว ห้ามทักทายซ้ำเด็ดขาด
         isAtHome = false;
         window.hasGreeted = true;
+        if (personInFrameTime === null) personInFrameTime = Date.now();
         
         // 🔒 ล็อกสถานะระบบ
         window.isQueueOpen = true;
-        window.isBusy = true; 
 
-        // 🛑 เคลียร์เสียงพูดที่อาจจะค้างอยู่ก่อนหน้านี้ให้เงียบสนิท
+        // 🛑 เคลียร์เสียงพูด ไฟล์เสียงค้าง และไมค์ทั้งหมดทันที
+        if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
         stopAllSpeech();
         if (typeof forceStopAllMic === 'function') forceStopAllMic();
 
@@ -1368,16 +1415,20 @@ function openQueueModal() {
             vipAudio.currentTime = 0;
         }
 
+        // ล็อก Busy อีกครั้งหลัง stopAllSpeech()
+        window.isBusy = true;
+
         modal.style.display = 'flex';
         updateInteractionTime();
         
         const msg = window.currentLang === 'th' ? "กรุณากดคิวเลือกประเภทงานบริการ หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ" : "Please select a service to get your queue ticket.";
         
-        // 🟢 หน่วงเวลา 100ms ให้ระบบเคลียร์เสียงเก่าให้ตายสนิทก่อน แล้วค่อยเล่นเสียงคิว
-        setTimeout(() => {
+        // 🟢 หน่วงเวลา 120ms ให้ระบบเคลียร์เสียงเก่าให้ตายสนิทก่อน แล้วค่อยเล่นเสียงคิว
+        window.queueAudioDelayTimer = setTimeout(() => {
+            if (!window.isQueueOpen) return;
             if (window.currentLang === 'th') {
                 playAudioLink("https://dlt-transport.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
-                    window.isBusy = false; // ปลดล็อกให้ผู้ใช้แตะปุ่มเลือกคิวได้
+                    window.isBusy = false; // ปลดล็อกเมื่อพูดจบ
                 });
             } else {
                 if (typeof speak === 'function') {
@@ -1386,6 +1437,51 @@ function openQueueModal() {
                     });
                 }
             }
-        }, 100);
+        }, 120);
+    }
+}
+
+function closeQueueModal() {
+    const modal = document.getElementById('queueModal');
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // 🛑 หยุดเสียงคำแนะนำคิวที่อาจยังพูดไม่จบในทันที
+        if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
+        stopAllSpeech();
+
+        // 🔓 ปลดล็อกสถานะหน้าต่างคิว แต่คงสถานะว่าทักทายคนหน้าตู้ไปแล้ว (ป้องกันทักซ้ำ!)
+        window.isQueueOpen = false;
+        isAtHome = false;
+        window.hasGreeted = true;
+        if (personInFrameTime === null) personInFrameTime = Date.now();
+        
+        // ⚠️ ล็อก Busy ไว้ก่อนเพื่อเล่นเสียงถามไถ่หลังปิดหน้าคิว
+        window.isBusy = true; 
+
+        updateInteractionTime();
+        
+        const msg = window.currentLang === 'th' ? "มีอะไรให้น้องนำทางช่วยเหลือเพิ่มเติมไหมครับ" : "Is there anything else I can help you with?";
+        displayResponse(msg);
+        
+        // 🟢 เล่นไฟล์เสียงแทน TTS เมื่อปิดหน้าคิว (อัปเกรดใช้ .wav)
+        window.queueAudioDelayTimer = setTimeout(() => {
+            if (window.isQueueOpen) return;
+            if (window.currentLang === 'th') {
+                playAudioLink("https://dlt-transport.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav", () => {
+                    window.isBusy = false;
+                    window.allowWakeWord = true;
+                    if (typeof startWakeWord === 'function') startWakeWord();
+                });
+            } else {
+                if (typeof speak === 'function') {
+                    speak(msg, () => {
+                        window.isBusy = false;
+                        window.allowWakeWord = true;
+                        if (typeof startWakeWord === 'function') startWakeWord();
+                    });
+                }
+            }
+        }, 120);
     }
 }
