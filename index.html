@@ -392,10 +392,18 @@
         </button>
       </div>
 
-      <div class="idcard-single-section" style="margin-bottom: 12px;">
+      <div class="idcard-single-section" style="margin-bottom: 8px;">
         <button class="btn-idcard-single" onclick="openQueueModal()" style="border-color: #00b894; box-shadow: 0 4px 12px rgba(0, 184, 148, 0.06);">
           <div class="icon-box" style="background: #00b894;"><i class="fas fa-ticket-alt"></i></div>
           <div class="text-box">ระบบบริการสะดวก<br><b style="color: #00b894;">รับบัตรคิวงานตรวจสภาพรถ</b></div>
+        </button>
+      </div>
+
+      <!-- 🟢 ปุ่มเปิดระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่) -->
+      <div class="idcard-single-section" style="margin-bottom: 12px;">
+        <button class="btn-idcard-single" onclick="openFormServiceModal()" style="border-color: #6c5ce7; box-shadow: 0 4px 12px rgba(108, 92, 231, 0.08);">
+          <div class="icon-box" style="background: #6c5ce7;"><i class="fas fa-file-signature"></i></div>
+          <div class="text-box">ระบบบริการสะดวก<br><b style="color: #6c5ce7;">กรอกแบบฟอร์มคำขออัตโนมัติ</b></div>
         </button>
       </div>
 
@@ -504,6 +512,18 @@
       </div>
   </div>
 
+  <!-- 🟢 หน้าต่าง Popup สำหรับระบบบริการแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่) -->
+  <div id="formServiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.85); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px); box-sizing: border-box;">
+      <div style="background-color: #f8fafc; width: 98%; height: 96%; border-radius: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;">
+          <button onclick="closeFormServiceModal()" style="position: absolute; top: 15px; right: 15px; background: #ff7675; color: white; border: none; border-radius: 50%; width: 55px; height: 55px; font-size: 26px; cursor: pointer; z-index: 100000; box-shadow: 0 4px 10px rgba(255, 118, 117, 0.4); display: flex; justify-content: center; align-items: center;">✖</button>
+          <div style="width: 100%; height: 100%; overflow: hidden; position: relative;">
+              <iframe id="formServiceIframe" src="https://dlt-transport.github.io/Application-Form-Services/?mode=kiosk" 
+                      style="width: 100%; height: 100%; border: none; display: block;">
+              </iframe>
+          </div>
+      </div>
+  </div>
+
   <script src="https://code.responsivevoice.org/responsivevoice.js"></script>
   <script src="script.js?v=2.3"></script>
 
@@ -591,6 +611,7 @@
         });
         const imgEl = document.getElementById('id-card-render');
         if (imgEl) imgEl.src = '';
+        window.currentKioskCardData = null; // 🟢 ล้างข้อมูลบัตรที่ส่งให้ฟอร์มเมื่อดึงบัตรออก
         console.log('🧹 [DOM] ล้างข้อมูลบัตรออกจากหน้าจอแล้ว');
     }
 
@@ -668,6 +689,19 @@
                         if (document.getElementById('val-issue')) document.getElementById('val-issue').innerText = cleanData[19] || '—';
                         if (document.getElementById('val-expiry')) document.getElementById('val-expiry').innerText = cleanData[20] || '—';
                         if (document.getElementById('val-address')) document.getElementById('val-address').innerText = fullAddress;
+
+                        // 🟢 เก็บข้อมูลบัตรส่งต่อไปยังหน้าต่างระบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่)
+                        window.currentKioskCardData = {
+                            id: cleanData[2] || '',
+                            fullName: `${cleanData[3] || ''} ${cleanData[4] || ''} ${cleanData[5] || ''}`.trim(),
+                            age: calcAgeFromDob(cleanData[9] || ''),
+                            houseNo: vNo !== '—' ? vNo : '',
+                            moo: vMoo || '',
+                            tambon: vSub || '',
+                            amphoe: vDist || '',
+                            province: vProv || ''
+                        };
+                        sendCardDataToFormIframe();
                     }
                     if (response.photoBase64 && document.getElementById('id-card-render')) {
                         try {
@@ -934,6 +968,131 @@
             }, 120);
         }
     }
+
+    // ==========================================
+    // 📋 ฟังก์ชันควบคุม Popup ระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่)
+    // ==========================================
+    window.currentKioskCardData = null;
+
+    function calcAgeFromDob(dobStr) {
+        if (!dobStr || dobStr === '—') return '';
+        const nums = dobStr.match(/\d{4}/g);
+        if (!nums) return '';
+        let year = parseInt(nums[nums.length - 1]);
+        if (dobStr.length === 8 && !dobStr.includes(' ')) {
+            year = parseInt(dobStr.substring(0, 4));
+        }
+        const currentYearBE = new Date().getFullYear() + 543;
+        const currentYearAD = new Date().getFullYear();
+        return year > 2400 ? (currentYearBE - year) : (currentYearAD - year);
+    }
+
+    function sendCardDataToFormIframe() {
+        const iframe = document.getElementById('formServiceIframe');
+        if (iframe && iframe.contentWindow && window.currentKioskCardData) {
+            iframe.contentWindow.postMessage({
+                type: 'KIOSK_IDCARD_DATA',
+                payload: window.currentKioskCardData
+            }, '*');
+        }
+    }
+
+    function openFormServiceModal() {
+        const modal = document.getElementById('formServiceModal');
+        if (modal) {
+            isAtHome = false;
+            window.hasGreeted = true;
+            if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
+                personInFrameTime = Date.now();
+            }
+            window.isQueueOpen = true;
+
+            if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
+            if (typeof stopAllSpeech === 'function') stopAllSpeech();
+            window.speechSynthesis.cancel();
+            if (typeof responsiveVoice !== 'undefined') responsiveVoice.cancel();
+            if (typeof forceStopAllMic === 'function') forceStopAllMic();
+
+            const vipAudio = document.getElementById('vipGreetingSound');
+            if (vipAudio) {
+                vipAudio.pause();
+                vipAudio.currentTime = 0;
+            }
+
+            modal.style.display = 'flex';
+            updateInteractionTime();
+
+            connectToKioskBackend();
+            setTimeout(sendCardDataToFormIframe, 500);
+        }
+    }
+
+    function closeFormServiceModal() {
+        const modal = document.getElementById('formServiceModal');
+        if (modal) {
+            modal.style.display = 'none';
+            if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
+            if (typeof stopAllSpeech === 'function') stopAllSpeech();
+
+            window.isQueueOpen = false;
+            isAtHome = false;
+            window.hasGreeted = true;
+            if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
+                personInFrameTime = Date.now();
+            }
+            window.isBusy = true;
+            updateInteractionTime();
+
+            const msg = window.currentLang === 'th' ? "มีอะไรให้น้องนำทางช่วยเหลือเพิ่มเติมไหมครับ" : "Is there anything else I can help you with?";
+            displayResponse(msg);
+
+            window.queueAudioDelayTimer = setTimeout(() => {
+                if (window.isQueueOpen) return;
+                if (window.currentLang === 'th') {
+                    playAudioLink("https://dlt-transport.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav", () => {
+                        window.isBusy = false;
+                        window.allowWakeWord = true;
+                        if (typeof startWakeWord === 'function') startWakeWord();
+                    });
+                } else {
+                    if (typeof speak === 'function') {
+                        speak(msg, () => {
+                            window.isBusy = false;
+                            window.allowWakeWord = true;
+                            if (typeof startWakeWord === 'function') startWakeWord();
+                        });
+                    }
+                }
+            }, 120);
+        }
+    }
+
+    window.addEventListener('message', async (event) => {
+        if (!event.data) return;
+
+        if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
+            if (window.currentKioskCardData) {
+                sendCardDataToFormIframe();
+            } else if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+            }
+        }
+
+        if (event.data.type === 'PRINT_FORM_PDF' && event.data.pdfBase64) {
+            try {
+                await fetch('http://localhost:8080/print', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'copy',
+                        pdfBase64: event.data.pdfBase64.startsWith('data:') ? event.data.pdfBase64 : `data:application/pdf;base64,${event.data.pdfBase64}`
+                    })
+                });
+            } catch (err) {
+                console.error('ส่งพิมพ์ฟอร์ม PDF ที่ตู้ล้มเหลว:', err);
+            }
+        }
+    });
 
     // 🛑 ดักจับจังหวะที่ผู้ใช้แตะเลือกคิวใน <iframe> เพื่อหยุดเสียงคำแนะนำคิวทันที ไม่ให้เสียงตีกัน
     window.addEventListener('blur', () => {
