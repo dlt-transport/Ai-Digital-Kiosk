@@ -970,9 +970,10 @@
     }
 
     // ==========================================
-    // 📋 ฟังก์ชันควบคุม Popup ระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่)
+    // 📋 ฟังก์ชันควบคุม Popup ระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (ฉบับแก้ไขทะลุ Iframe + แป้นพิมพ์ไม่เด้งหาย)
     // ==========================================
     window.currentKioskCardData = null;
+    window.formIframeSource = null; // 🟢 เก็บหน้าต่างชั้นในสุดของฟอร์มไว้ส่งข้อมูลกลับโดยตรง
 
     function calcAgeFromDob(dobStr) {
         if (!dobStr || dobStr === '—') return '';
@@ -988,12 +989,21 @@
     }
 
     function sendCardDataToFormIframe() {
+        if (!window.currentKioskCardData) return;
+        const msgData = {
+            type: 'KIOSK_IDCARD_DATA',
+            payload: window.currentKioskCardData
+        };
+
+        // 🟢 1. ส่งกลับไปยังหน้าต่างชั้นในสุดของ Google Apps Script โดยตรง (ทะลุทุกชั้นของ Iframe)
+        if (window.formIframeSource) {
+            try { window.formIframeSource.postMessage(msgData, '*'); } catch (e) {}
+        }
+
+        // 🟢 2. ส่งเข้า Iframe ชั้นแรกด้วยเผื่อกรณีไม่ได้ซ้อน Iframe
         const iframe = document.getElementById('formServiceIframe');
-        if (iframe && iframe.contentWindow && window.currentKioskCardData) {
-            iframe.contentWindow.postMessage({
-                type: 'KIOSK_IDCARD_DATA',
-                payload: window.currentKioskCardData
-            }, '*');
+        if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(msgData, '*'); } catch (e) {}
         }
     }
 
@@ -1022,6 +1032,7 @@
             modal.style.display = 'flex';
             updateInteractionTime();
 
+            // สั่งอ่านบัตรเตรียมไว้ทันทีที่เปิดหน้าฟอร์ม
             connectToKioskBackend();
             setTimeout(sendCardDataToFormIframe, 500);
         }
@@ -1071,10 +1082,17 @@
         if (!event.data) return;
 
         if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
+            // 🟢 จำหน้าต่างชั้นในสุดที่ส่งคำขอมา เพื่อส่งข้อมูลบัตรกลับไปให้ถูกตัว
+            window.formIframeSource = event.source;
+
             if (window.currentKioskCardData) {
                 sendCardDataToFormIframe();
-            } else if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-                wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+            } else {
+                // หากยังไม่มีข้อมูลบัตรค้างไว้ ให้สั่งเครื่องอ่านบัตรอ่านใหม่ทันที
+                connectToKioskBackend();
+                if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                    wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+                }
             }
         }
 
@@ -1094,14 +1112,13 @@
         }
     });
 
-    // 🛑 ดักจับจังหวะที่ผู้ใช้แตะเลือกคิวใน <iframe> เพื่อหยุดเสียงคำแนะนำคิวทันที ไม่ให้เสียงตีกัน
+    // 🛑 ดักจับจังหวะที่ผู้ใช้แตะใน <iframe> เพื่อหยุดเสียงคำแนะนำทันที (เอา window.focus() ออกเพื่อไม่ให้แป้นพิมพ์และ Dropdown เด้งหาย)
     window.addEventListener('blur', () => {
         if (window.isQueueOpen) {
-            console.log("👆 [Queue Iframe] ผู้ใช้แตะเลือกคิวในหน้าต่าง -> หยุดเสียงคำแนะนำเพื่อไม่ให้ตีกัน");
+            console.log("👆 [Iframe Interaction] ผู้ใช้แตะใช้งานในหน้าต่าง -> หยุดเสียงคำแนะนำเพื่อไม่ให้ตีกัน");
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
             updateInteractionTime();
-            setTimeout(() => { try { window.focus(); } catch (e) {} }, 300);
         }
     });
 
