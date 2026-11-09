@@ -1256,20 +1256,86 @@
     });
 
     // ==========================================
-    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้เกิน 30 วินาที -> ปิดหน้าฟอร์ม + ล้างข้อมูล + กลับหน้าโฮมอัตโนมัติ
+    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ผ่อนผัน 30 วินาที + แจ้งเตือนนับถอยหลัง 15 วินาทีก่อนล้างฟอร์ม)
     // ==========================================
+    let formIdleSeconds = 0;
+    let isWarningPopupOpen = false;
+
+    // รีเซ็ตเวลานับถอยหลังทุกครั้งที่มีการแตะหน้าจอหรือพิมพ์ในฟอร์ม
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'KIOSK_USER_ACTIVITY') {
+            formIdleSeconds = 0;
+            window.isQueueOpen = true;
+        }
+    });
+
     setInterval(() => {
         const formModal = document.getElementById('formServiceModal');
         const previewModal = document.getElementById('kioskPdfPreviewModal');
         const isFormShowing = formModal && formModal.style.display === 'flex';
         const isPreviewShowing = previewModal && previewModal.style.display === 'flex';
 
-        if ((isFormShowing || isPreviewShowing) && !window.isQueueOpen) {
-            console.log("🚶 [Auto-Reset] ไม่มีผู้ใช้งานหน้าตู้เกินกำหนด -> ปิดหน้าฟอร์มและล้างข้อมูลกลับหน้าหลัก");
+        if (!isFormShowing && !isPreviewShowing) {
+            formIdleSeconds = 0;
+            return;
+        }
+
+        // ถ้ากล้องยังเห็นหน้าคน หรือเพิ่งแตะจอไม่เกิน 30 วินาที (window.isQueueOpen ยังเป็น true)
+        if (window.isQueueOpen && personInFrameTime !== null && (Date.now() - lastSeenTime <= 30000)) {
+            formIdleSeconds = 0;
+            return;
+        }
+
+        // เริ่มนับเวลาที่ไม่มีทั้งใบหน้าและไม่มีการแตะจอ
+        formIdleSeconds++;
+        window.isQueueOpen = true; // ล็อกไว้ก่อนไม่ให้ script.js ตัดหน้าโฮมแทรก
+
+        // ⏳ เมื่อนิ่งเกิน 30 วินาที ให้แสดงปุ่มถามบนหน้าจอก่อน 15 วินาที (รวมเป็น 45 วินาที)
+        if (formIdleSeconds === 30 && !isWarningPopupOpen) {
+            isWarningPopupOpen = true;
+            let warnBox = document.getElementById('kioskIdleWarnModal');
+            if (!warnBox) {
+                warnBox = document.createElement('div');
+                warnBox.id = 'kioskIdleWarnModal';
+                warnBox.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100dvh;background:rgba(0,0,0,0.8);z-index:200000;display:flex;justify-content:center;align-items:center;font-family:Sarabun,sans-serif;';
+                warnBox.innerHTML = `
+                    <div style="background:white;padding:30px;border-radius:24px;text-align:center;max-width:450px;width:90%;box-shadow:0 15px 40px rgba(0,0,0,0.5);">
+                        <div style="font-size:48px;margin-bottom:10px;">⏳</div>
+                        <h3 style="font-size:24px;font-weight:800;color:#2d3436;margin:0 0 10px 0;">ท่านยังใช้งานอยู่หรือไม่?</h3>
+                        <p style="font-size:18px;color:#636e72;margin-bottom:24px;">ระบบจะล้างข้อมูลและกลับสู่หน้าหลักใน <b id="kioskIdleCountdown" style="color:#e74c3c;font-size:22px;">15</b> วินาที</p>
+                        <button id="btnKeepFormAlive" style="width:100%;padding:16px;background:#00b894;color:white;border:none;border-radius:14px;font-size:20px;font-weight:bold;cursor:pointer;">
+                            👆 ยังใช้งานอยู่ (กรอกข้อมูลต่อ)
+                        </button>
+                    </div>`;
+                document.body.appendChild(warnBox);
+                document.getElementById('btnKeepFormAlive').onclick = () => {
+                    formIdleSeconds = 0;
+                    isWarningPopupOpen = false;
+                    warnBox.style.display = 'none';
+                    if (typeof updateInteractionTime === 'function') updateInteractionTime();
+                };
+            }
+            document.getElementById('kioskIdleCountdown').innerText = '15';
+            warnBox.style.display = 'flex';
+        }
+
+        // อัปเดตตัวเลขนับถอยหลัง 15 วินาที
+        if (formIdleSeconds > 30 && formIdleSeconds < 45 && isWarningPopupOpen) {
+            const countEl = document.getElementById('kioskIdleCountdown');
+            if (countEl) countEl.innerText = String(105 - formIdleSeconds);
+        }
+
+        // 🚶 หากครบ 45 วินาทีแล้วยังไม่มีใครกดปุ่ม แปลว่าเดินออกจากตู้จริง -> สั่งล้างข้อมูลและกลับหน้าโฮมทันที
+        if (formIdleSeconds >= 45) {
+            formIdleSeconds = 0;
+            isWarningPopupOpen = false;
+            window.isQueueOpen = false;
+
+            const warnBox = document.getElementById('kioskIdleWarnModal');
+            if (warnBox) warnBox.style.display = 'none';
 
             if (previewModal) previewModal.style.display = 'none';
             if (typeof closeKioskPdfPreview === 'function') closeKioskPdfPreview();
-
             if (formModal) formModal.style.display = 'none';
 
             if (window.formIframeSource) {
@@ -1284,6 +1350,7 @@
                 wsClient.send(JSON.stringify({ action: 'delete-data' }));
             }
             if (typeof clearIdCardDOM === 'function') clearIdCardDOM();
+            if (typeof resetToHome === 'function') resetToHome();
         }
     }, 1000);
 
