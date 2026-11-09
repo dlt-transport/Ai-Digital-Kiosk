@@ -399,7 +399,7 @@
         </button>
       </div>
 
-      <!-- 🟢 ปุ่มเปิดระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่) -->
+      <!-- 🟢 ปุ่มเปิดระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ -->
       <div class="idcard-single-section" style="margin-bottom: 12px;">
         <button class="btn-idcard-single" onclick="openFormServiceModal()" style="border-color: #6c5ce7; box-shadow: 0 4px 12px rgba(108, 92, 231, 0.08);">
           <div class="icon-box" style="background: #6c5ce7;"><i class="fas fa-file-signature"></i></div>
@@ -512,14 +512,40 @@
       </div>
   </div>
 
-  <!-- 🟢 หน้าต่าง Popup สำหรับระบบบริการแบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่) -->
+  <!-- 🟢 หน้าต่าง Popup สำหรับระบบบริการแบบฟอร์มคำขออัตโนมัติ -->
   <div id="formServiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.85); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(5px); box-sizing: border-box;">
       <div style="background-color: #f8fafc; width: 98%; height: 96%; border-radius: 20px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;">
           <button onclick="closeFormServiceModal()" style="position: absolute; top: 15px; right: 15px; background: #ff7675; color: white; border: none; border-radius: 50%; width: 55px; height: 55px; font-size: 26px; cursor: pointer; z-index: 100000; box-shadow: 0 4px 10px rgba(255, 118, 117, 0.4); display: flex; justify-content: center; align-items: center;">✖</button>
           <div style="width: 100%; height: 100%; overflow: hidden; position: relative;">
-              <iframe id="formServiceIframe" src="https://script.google.com/macros/s/AKfycbzVp7J3B0Pm1hBi8h-fZHX4qMjgUrOac5JmombOwKZ9tJ_GXdmJ1ZvOcp7pN_dnJY90xw/exec?mode=kiosk" 
+              <iframe id="formServiceIframe" src="https://dlt-transport.github.io/Application-Form-Services/?mode=kiosk" 
                       style="width: 100%; height: 100%; border: none; display: block;">
               </iframe>
+          </div>
+      </div>
+  </div>
+
+  <!-- 🟢 หน้าต่างพรีวิวเอกสาร PDF สำหรับสั่งพิมพ์ทันทีบนตู้คีออสก์ (ไร้การดาวน์โหลดเก็บลงเครื่อง) -->
+  <div id="kioskPdfPreviewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.9); z-index: 100005; justify-content: center; align-items: center; backdrop-filter: blur(6px); box-sizing: border-box;">
+      <div style="background-color: #1e293b; width: 96%; height: 96%; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
+          <div style="background: #0f172a; color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 22px;">📄</span>
+                  <div>
+                      <div id="kioskPreviewTitle" style="font-weight: bold; font-size: 18px;">พรีวิวเอกสารคำขอก่อนสั่งพิมพ์</div>
+                      <div style="font-size: 12px; color: #94a3b8;">ตรวจสอบความถูกต้อง แล้วกดปุ่ม "สั่งพิมพ์เอกสาร" ด้านขวาบน (ระบบไม่บันทึกไฟล์ลงเครื่อง)</div>
+                  </div>
+              </div>
+              <div style="display: flex; gap: 12px;">
+                  <button id="btnConfirmKioskPrint" onclick="confirmKioskFormPrint()" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 17px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                      <i class="fas fa-print"></i> สั่งพิมพ์เอกสารทันที
+                  </button>
+                  <button onclick="closeKioskPdfPreview()" style="background: #ef4444; color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
+                      ✖ ปิดหน้าต่าง
+                  </button>
+              </div>
+          </div>
+          <div style="flex: 1; width: 100%; background: #334155; position: relative;">
+              <iframe id="kioskPdfPreviewFrame" src="" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
           </div>
       </div>
   </div>
@@ -598,7 +624,7 @@
                 }
             };
             img.onerror = () => {
-                resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`);
+                resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
             };
             img.src = base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
         });
@@ -611,8 +637,9 @@
         });
         const imgEl = document.getElementById('id-card-render');
         if (imgEl) imgEl.src = '';
-        window.currentKioskCardData = null; // 🟢 ล้างข้อมูลบัตรที่ส่งให้ฟอร์มเมื่อดึงบัตรออก
-        console.log('🧹 [DOM] ล้างข้อมูลบัตรออกจากหน้าจอแล้ว');
+        window.currentKioskCardData = null; // 🟢 ล้างข้อมูลบัตรในหน่วยความจำทันที
+        notifyFormCardRemoved(); // 🟢 สั่งให้หน้าฟอร์มคำขอล้างข้อมูลบัตรทันทีด้วย
+        console.log('🧹 [DOM] ล้างข้อมูลบัตรออกจากหน้าจอทั้งระบบพิมพ์สำเนาและระบบฟอร์มคำขอแล้ว');
     }
 
     let wsClient = null;
@@ -667,15 +694,16 @@
             try {
                 const response = JSON.parse(event.data);
 
-                if (response.status === 'deleted') {
+                // 🟢 เมื่อดึงบัตรออก หรือสั่งลบข้อมูล ให้ล้างข้อมูลทั้งระบบพิมพ์สำเนาบัตรและระบบกรอกคำขอทันที
+                if (response.status === 'deleted' || response.status === 'removed' || response.status === 'empty' || response.status === 'no_card') {
                     clearIdCardDOM();
                     setPrintBtnReady(false);
                     document.getElementById('response-text').innerText = "💳 ระบบพร้อมใช้งาน กรุณาเสียบบัตรประชาชนที่เครื่องอ่าน...";
-                    console.log('✅ [Backend] ลบข้อมูลบัตรแล้ว');
+                    console.log('✅ [Backend] ลบข้อมูลบัตรแล้ว (ดึงบัตรออก)');
                     return;
                 }
 
-                if (response.status === 'success') {
+                if (response.status === 'success' && response.rawData) {
                     const cleanData = response.rawData.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g).map(s => s.replace(/^"|"$/g, '').trim());
                     if (cleanData.length > 0) {
                         const clean = (idx, prefix) => cleanData[idx] ? cleanData[idx].replace(new RegExp(`^${prefix}`, 'gi'), '').trim() : '';
@@ -690,7 +718,6 @@
                         if (document.getElementById('val-expiry')) document.getElementById('val-expiry').innerText = cleanData[20] || '—';
                         if (document.getElementById('val-address')) document.getElementById('val-address').innerText = fullAddress;
 
-                        // 🟢 เก็บข้อมูลบัตรส่งต่อไปยังหน้าต่างระบบฟอร์มคำขออัตโนมัติ (เพิ่มใหม่)
                         window.currentKioskCardData = {
                             id: cleanData[2] || '',
                             fullName: `${cleanData[3] || ''} ${cleanData[4] || ''} ${cleanData[5] || ''}`.trim(),
@@ -714,6 +741,8 @@
                     document.getElementById('response-text').innerText = "✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา";
                     setPrintBtnReady(true);
                 } else {
+                    // 🟢 หากสถานะไม่ใช่ success (เช่น ไม่มีบัตรเสียบอยู่) ให้ล้างข้อมูลบัตรที่ค้างอยู่ทันที
+                    clearIdCardDOM();
                     setPrintBtnReady(false);
                 }
             } catch (err) { console.error('ประมวลผลข้อมูลล้มเหลว:', err); }
@@ -871,31 +900,26 @@
     function openQueueModal() {
         const modal = document.getElementById('queueModal');
         if (modal) {
-            // 🛑 บอก AI ว่ามีคนใช้งานอยู่หน้าตู้แล้ว ห้ามทักทายซ้ำเด็ดขาด
             isAtHome = false;
             window.hasGreeted = true;
             if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
                 personInFrameTime = Date.now();
             }
 
-            // 🔒 ล็อกสถานะเพื่อป้องกัน AI ทำงานแทรกขณะเปิดหน้าต่าง
             window.isQueueOpen = true;
 
-            // 🛑 เคลียร์เสียงพูด ไฟล์เสียงค้าง และไมค์ทั้งหมดทันที
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
             window.speechSynthesis.cancel();
             if (typeof responsiveVoice !== 'undefined') responsiveVoice.cancel();
             if (typeof forceStopAllMic === 'function') forceStopAllMic();
 
-            // ปิดเสียง MP3 VIP (ถ้ามี)
             const vipAudio = document.getElementById('vipGreetingSound');
             if (vipAudio) {
                 vipAudio.pause();
                 vipAudio.currentTime = 0;
             }
 
-            // ล็อก Busy อีกครั้งหลัง stopAllSpeech()
             window.isBusy = true;
 
             modal.style.display = 'flex';
@@ -903,12 +927,11 @@
             
             const msg = window.currentLang === 'th' ? "กรุณากดคิวเลือกประเภทงานบริการ หรือสแกนคิวอาโค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ" : "Please select a service to get your queue ticket.";
             
-            // 🟢 หน่วงเวลาสั้นๆ เพื่อเคลียร์เสียงเก่าให้ขาดก่อนเริ่มเล่นเสียงแนะนำคิว
             window.queueAudioDelayTimer = setTimeout(() => {
                 if (!window.isQueueOpen) return;
                 if (window.currentLang === 'th') {
                     playAudioLink("https://dlt-transport.github.io/sound/กรุณากดคิวเลือกประเภทงานบริการ_หรือสแกนคิวอาร์โค้ดเพื่อรับแจ้งคิวออนไลน์ได้เลยครับ.wav", () => {
-                        window.isBusy = false; // ปลดล็อกเมื่อพูดจบ
+                        window.isBusy = false;
                     });
                 } else {
                     if (typeof speak === 'function') {
@@ -926,11 +949,9 @@
         if (modal) {
             modal.style.display = 'none';
             
-            // 🛑 หยุดเสียงคำแนะนำคิวที่อาจยังพูดไม่จบในทันที
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
 
-            // 🔓 ปลดล็อกสถานะหน้าต่างคิว แต่คงสถานะว่าทักทายคนหน้าตู้ไปแล้ว (ป้องกันทักซ้ำ!)
             window.isQueueOpen = false;
             isAtHome = false;
             window.hasGreeted = true;
@@ -938,7 +959,6 @@
                 personInFrameTime = Date.now();
             }
             
-            // ⚠️ ล็อก Busy ไว้ก่อนเพื่อเล่นเสียงถามไถ่หลังปิดหน้าคิว
             window.isBusy = true; 
 
             updateInteractionTime();
@@ -946,12 +966,10 @@
             const msg = window.currentLang === 'th' ? "มีอะไรให้น้องนำทางช่วยเหลือเพิ่มเติมไหมครับ" : "Is there anything else I can help you with?";
             displayResponse(msg);
             
-            // 🟢 เล่นไฟล์เสียงแทน TTS เมื่อปิดหน้าคิว (อัปเกรดใช้ .wav)
             window.queueAudioDelayTimer = setTimeout(() => {
                 if (window.isQueueOpen) return;
                 if (window.currentLang === 'th') {
                     playAudioLink("https://dlt-transport.github.io/sound/มีอะไรให้ช่วยไหมครับ.wav", () => {
-                        // หลังจากพูดจบ ค่อยปลดล็อกและเริ่ม WakeWord
                         window.isBusy = false;
                         window.allowWakeWord = true;
                         if (typeof startWakeWord === 'function') startWakeWord();
@@ -970,10 +988,12 @@
     }
 
     // ==========================================
-    // 📋 ฟังก์ชันควบคุม Popup ระบบช่วยกรอกแบบฟอร์มคำขออัตโนมัติ (ฉบับแก้ไขทะลุ Iframe + แป้นพิมพ์ไม่เด้งหาย)
+    // 📋 ฟังก์ชันควบคุมระบบฟอร์มคำขอ & พรีวิวปริ้นท์ทันที & ล้างข้อมูลบัตรเมื่อดึงบัตรออก
     // ==========================================
     window.currentKioskCardData = null;
-    window.formIframeSource = null; // 🟢 เก็บหน้าต่างชั้นในสุดของฟอร์มไว้ส่งข้อมูลกลับโดยตรง
+    window.formIframeSource = null;
+    let currentPreviewPdfBase64 = null;
+    let currentPreviewBlobUrl = null;
 
     function calcAgeFromDob(dobStr) {
         if (!dobStr || dobStr === '—') return '';
@@ -994,13 +1014,20 @@
             type: 'KIOSK_IDCARD_DATA',
             payload: window.currentKioskCardData
         };
-
-        // 🟢 1. ส่งกลับไปยังหน้าต่างชั้นในสุดของ Google Apps Script โดยตรง (ทะลุทุกชั้นของ Iframe)
         if (window.formIframeSource) {
             try { window.formIframeSource.postMessage(msgData, '*'); } catch (e) {}
         }
+        const iframe = document.getElementById('formServiceIframe');
+        if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(msgData, '*'); } catch (e) {}
+        }
+    }
 
-        // 🟢 2. ส่งเข้า Iframe ชั้นแรกด้วยเผื่อกรณีไม่ได้ซ้อน Iframe
+    function notifyFormCardRemoved() {
+        const msgData = { type: 'KIOSK_IDCARD_REMOVED' };
+        if (window.formIframeSource) {
+            try { window.formIframeSource.postMessage(msgData, '*'); } catch (e) {}
+        }
         const iframe = document.getElementById('formServiceIframe');
         if (iframe && iframe.contentWindow) {
             try { iframe.contentWindow.postMessage(msgData, '*'); } catch (e) {}
@@ -1032,7 +1059,6 @@
             modal.style.display = 'flex';
             updateInteractionTime();
 
-            // สั่งอ่านบัตรเตรียมไว้ทันทีที่เปิดหน้าฟอร์ม
             connectToKioskBackend();
             setTimeout(sendCardDataToFormIframe, 500);
         }
@@ -1044,6 +1070,15 @@
             modal.style.display = 'none';
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
+
+            // 🟢 สั่งรีเซ็ตหน้าฟอร์มและสั่งลบข้อมูลบัตรใน Backend ทันทีที่ปิดหน้าต่าง
+            if (window.formIframeSource) {
+                try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            clearIdCardDOM();
 
             window.isQueueOpen = false;
             isAtHome = false;
@@ -1078,17 +1113,107 @@
         }
     }
 
+    // 🟢 เปิดหน้าต่างพรีวิว PDF บนตู้คีออสก์โดยไม่ดาวน์โหลดไฟล์เก็บลงเครื่อง
+    function openKioskPdfPreview(pdfBase64, titleText) {
+        currentPreviewPdfBase64 = pdfBase64;
+        if (currentPreviewBlobUrl) {
+            URL.revokeObjectURL(currentPreviewBlobUrl);
+            currentPreviewBlobUrl = null;
+        }
+
+        const cleanBase64 = pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+        const byteCharacters = atob(cleanBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+        currentPreviewBlobUrl = URL.createObjectURL(blob);
+
+        const titleEl = document.getElementById('kioskPreviewTitle');
+        if (titleEl && titleText) titleEl.innerText = `พรีวิว: ${titleText}`;
+
+        const frame = document.getElementById('kioskPdfPreviewFrame');
+        if (frame) frame.src = `${currentPreviewBlobUrl}#toolbar=0&navpanes=0&view=FitH`;
+
+        const previewModal = document.getElementById('kioskPdfPreviewModal');
+        if (previewModal) previewModal.style.display = 'flex';
+    }
+
+    function closeKioskPdfPreview() {
+        const previewModal = document.getElementById('kioskPdfPreviewModal');
+        if (previewModal) previewModal.style.display = 'none';
+
+        const frame = document.getElementById('kioskPdfPreviewFrame');
+        if (frame) frame.src = '';
+
+        if (currentPreviewBlobUrl) {
+            URL.revokeObjectURL(currentPreviewBlobUrl);
+            currentPreviewBlobUrl = null;
+        }
+        currentPreviewPdfBase64 = null;
+    }
+
+    async function confirmKioskFormPrint() {
+        if (!currentPreviewPdfBase64) return;
+        const btn = document.getElementById('btnConfirmKioskPrint');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังส่งไปเครื่องพิมพ์...';
+        }
+
+        try {
+            const formattedBase64 = currentPreviewPdfBase64.startsWith('data:')
+                ? currentPreviewPdfBase64
+                : `data:application/pdf;base64,${currentPreviewPdfBase64}`;
+
+            await fetch('http://localhost:8080/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'copy',
+                    pdfBase64: formattedBase64
+                })
+            });
+
+            // สั่งลบข้อมูลบัตรใน Backend ทันทีหลังพิมพ์เสร็จ
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            clearIdCardDOM();
+            closeKioskPdfPreview();
+            closeFormServiceModal();
+            document.getElementById('response-text').innerText = "🎉 สั่งพิมพ์เอกสารคำขอเรียบร้อยแล้วครับ";
+        } catch (err) {
+            console.error('ส่งพิมพ์ผ่าน Backend ไม่สำเร็จ เปิดหน้าต่างพิมพ์ของเบราว์เซอร์แทน:', err);
+            const frame = document.getElementById('kioskPdfPreviewFrame');
+            if (frame && frame.contentWindow) {
+                try { frame.contentWindow.print(); } catch (e) {}
+            }
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-print"></i> สั่งพิมพ์เอกสารทันที';
+            }
+        }
+    }
+
     window.addEventListener('message', async (event) => {
         if (!event.data) return;
 
-        if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
-            // 🟢 จำหน้าต่างชั้นในสุดที่ส่งคำขอมา เพื่อส่งข้อมูลบัตรกลับไปให้ถูกตัว
+        // 🟢 จดจำหน้าต่างชั้นในสุดของระบบฟอร์มตั้งแต่เริ่มเปิด
+        if (event.data.type === 'REGISTER_FORM_IFRAME') {
             window.formIframeSource = event.source;
+            if (window.currentKioskCardData) {
+                sendCardDataToFormIframe();
+            }
+        }
 
+        if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
+            window.formIframeSource = event.source;
             if (window.currentKioskCardData) {
                 sendCardDataToFormIframe();
             } else {
-                // หากยังไม่มีข้อมูลบัตรค้างไว้ ให้สั่งเครื่องอ่านบัตรอ่านใหม่ทันที
                 connectToKioskBackend();
                 if (wsClient && wsClient.readyState === WebSocket.OPEN) {
                     wsClient.send(JSON.stringify({ action: 'trigger-read' }));
@@ -1096,26 +1221,15 @@
             }
         }
 
-        if (event.data.type === 'PRINT_FORM_PDF' && event.data.pdfBase64) {
-            try {
-                await fetch('http://localhost:8080/print', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: 'copy',
-                        pdfBase64: event.data.pdfBase64.startsWith('data:') ? event.data.pdfBase64 : `data:application/pdf;base64,${event.data.pdfBase64}`
-                    })
-                });
-            } catch (err) {
-                console.error('ส่งพิมพ์ฟอร์ม PDF ที่ตู้ล้มเหลว:', err);
-            }
+        // 🟢 เมื่อระบบฟอร์มส่ง PDF มาให้พรีวิวเพื่อสั่งพิมพ์บนตู้คีออสก์ (ไม่ดาวน์โหลดลงเครื่อง)
+        if (event.data.type === 'PREVIEW_FORM_PDF' && event.data.pdfBase64) {
+            openKioskPdfPreview(event.data.pdfBase64, event.data.title || 'เอกสารคำขอ');
         }
     });
 
-    // 🛑 ดักจับจังหวะที่ผู้ใช้แตะใน <iframe> เพื่อหยุดเสียงคำแนะนำทันที (เอา window.focus() ออกเพื่อไม่ให้แป้นพิมพ์และ Dropdown เด้งหาย)
+    // 🛑 ดักจับจังหวะที่ผู้ใช้แตะใน <iframe> เพื่อหยุดเสียงคำแนะนำทันที (ไม่ดึง focus กลับเพื่อป้องกันแป้นพิมพ์เด้งหาย)
     window.addEventListener('blur', () => {
         if (window.isQueueOpen) {
-            console.log("👆 [Iframe Interaction] ผู้ใช้แตะใช้งานในหน้าต่าง -> หยุดเสียงคำแนะนำเพื่อไม่ให้ตีกัน");
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
             updateInteractionTime();
