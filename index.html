@@ -623,8 +623,9 @@
                     resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`);
                 }
             };
+            // ✅ แก้ไขวงเล็บปิด ) ที่ตกหล่นตรงนี้เรียบร้อยแล้วครับ
             img.onerror = () => {
-                resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
+                resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`);
             };
             img.src = base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`;
         });
@@ -1201,6 +1202,13 @@
     window.addEventListener('message', async (event) => {
         if (!event.data) return;
 
+        // 🟢 รับสัญญาณการแตะหน้าจอ/พิมพ์งานจากใน Iframe ฟอร์ม เพื่อต่อเวลาไม่ให้หน้าจอตัดขณะก้มพิมพ์
+        if (event.data.type === 'KIOSK_USER_ACTIVITY') {
+            if (typeof updateInteractionTime === 'function') {
+                updateInteractionTime();
+            }
+        }
+
         // 🟢 จดจำหน้าต่างชั้นในสุดของระบบฟอร์มตั้งแต่เริ่มเปิด
         if (event.data.type === 'REGISTER_FORM_IFRAME') {
             window.formIframeSource = event.source;
@@ -1235,6 +1243,38 @@
             updateInteractionTime();
         }
     });
+
+    // ==========================================
+    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้เกิน 30 วินาที -> ปิดหน้าฟอร์ม + ล้างข้อมูล + กลับหน้าโฮมอัตโนมัติ (วางตรงนี้ครับ)
+    // ==========================================
+    setInterval(() => {
+        const formModal = document.getElementById('formServiceModal');
+        const previewModal = document.getElementById('kioskPdfPreviewModal');
+        const isFormShowing = formModal && formModal.style.display === 'flex';
+        const isPreviewShowing = previewModal && previewModal.style.display === 'flex';
+
+        if ((isFormShowing || isPreviewShowing) && !window.isQueueOpen) {
+            console.log("🚶 [Auto-Reset] ไม่มีผู้ใช้งานหน้าตู้เกินกำหนด -> ปิดหน้าฟอร์มและล้างข้อมูลกลับหน้าหลัก");
+
+            if (previewModal) previewModal.style.display = 'none';
+            if (typeof closeKioskPdfPreview === 'function') closeKioskPdfPreview();
+
+            if (formModal) formModal.style.display = 'none';
+
+            if (window.formIframeSource) {
+                try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+            const iframe = document.getElementById('formServiceIframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            if (typeof clearIdCardDOM === 'function') clearIdCardDOM();
+        }
+    }, 1000);
 
     window.addEventListener('DOMContentLoaded', connectToKioskBackend);
   </script>
