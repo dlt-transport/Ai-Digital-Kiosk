@@ -74,7 +74,7 @@
       padding-bottom: 10px; 
     }
 
-        /* 🌟 สร้าง "สปริงล่องหน" หนุนกล่องข้อความจากด้านล่างสุด */
+    /* 🌟 สร้าง "สปริงล่องหน" หนุนกล่องข้อความจากด้านล่างสุด */
     .main-container::after {
       content: '';
       display: block;
@@ -532,7 +532,7 @@
                   <span style="font-size: 22px;">📄</span>
                   <div>
                       <div id="kioskPreviewTitle" style="font-weight: bold; font-size: 18px;">พรีวิวเอกสารคำขอก่อนสั่งพิมพ์</div>
-                      <div style="font-size: 12px; color: #94a3b8;">ตรวจสอบความถูกต้อง แล้วกดปุ่ม "สั่งพิมพ์เอกสาร" ด้านขวาบน (ระบบไม่บันทึกไฟล์ลงเครื่อง)</div>
+                      <div style="font-size: 12px; color: #94a3b8;">ตรวจสอบความถูกต้อง แล้วกดปุ่ม "สั่งพิมพ์เอกสารทันที" ด้านขวาบน (ระบบไม่บันทึกไฟล์ลงเครื่อง)</div>
                   </div>
               </div>
               <div style="display: flex; gap: 12px;">
@@ -623,7 +623,6 @@
                     resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`);
                 }
             };
-            // ✅ แก้ไขวงเล็บปิด ) ที่ตกหล่นตรงนี้เรียบร้อยแล้วครับ
             img.onerror = () => {
                 resolve(base64Data.startsWith('data:image') ? base64Data : `data:image/jpeg;base64,${base64Data}`);
             };
@@ -639,8 +638,8 @@
         const imgEl = document.getElementById('id-card-render');
         if (imgEl) imgEl.src = '';
         window.currentKioskCardData = null; // 🟢 ล้างข้อมูลบัตรในหน่วยความจำทันที
-        notifyFormCardRemoved(); // 🟢 สั่งให้หน้าฟอร์มคำขอล้างข้อมูลบัตรทันทีด้วย
-        console.log('🧹 [DOM] ล้างข้อมูลบัตรออกจากหน้าจอทั้งระบบพิมพ์สำเนาและระบบฟอร์มคำขอแล้ว');
+        notifyFormCardRemoved(); // 🟢 แจ้งหน้าฟอร์มคำขอให้ล้างตัวแปรความจำบัตรทันที
+        console.log('🧹 [DOM] ล้างข้อมูลบัตรออกจากหน่วยความจำแล้ว');
     }
 
     let wsClient = null;
@@ -695,7 +694,7 @@
             try {
                 const response = JSON.parse(event.data);
 
-                // 🟢 เมื่อดึงบัตรออก หรือสั่งลบข้อมูล ให้ล้างข้อมูลทั้งระบบพิมพ์สำเนาบัตรและระบบกรอกคำขอทันที
+                // 🟢 เมื่อดึงบัตรออก หรือสั่งลบข้อมูล ให้ล้างข้อมูลบัตรในระบบทันที
                 if (response.status === 'deleted' || response.status === 'removed' || response.status === 'empty' || response.status === 'no_card') {
                     clearIdCardDOM();
                     setPrintBtnReady(false);
@@ -742,7 +741,6 @@
                     document.getElementById('response-text').innerText = "✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา";
                     setPrintBtnReady(true);
                 } else {
-                    // 🟢 หากสถานะไม่ใช่ success (เช่น ไม่มีบัตรเสียบอยู่) ให้ล้างข้อมูลบัตรที่ค้างอยู่ทันที
                     clearIdCardDOM();
                     setPrintBtnReady(false);
                 }
@@ -989,7 +987,7 @@
     }
 
     // ==========================================
-    // 📋 ฟังก์ชันควบคุมระบบฟอร์มคำขอ & พรีวิวปริ้นท์ทันที & ล้างข้อมูลบัตรเมื่อดึงบัตรออก
+    // 📋 ฟังก์ชันควบคุมระบบฟอร์มคำขอ & พรีวิวปริ้นท์ทันที & ลบข้อมูลบัตรหลังบ้านทันทีที่ดึงลงฟอร์มหรือถอดบัตร
     // ==========================================
     window.currentKioskCardData = null;
     window.formIframeSource = null;
@@ -1057,11 +1055,19 @@
                 vipAudio.currentTime = 0;
             }
 
+            // 🟢 สั่งให้ฟอร์มรีเซ็ตกลับหน้าแรก (พับหมวดหมู่เก็บ) ทุกครั้งที่กดเปิดเข้ามาใหม่
+            if (window.formIframeSource) {
+                try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+            const iframe = document.getElementById('formServiceIframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+
             modal.style.display = 'flex';
             updateInteractionTime();
 
             connectToKioskBackend();
-            setTimeout(sendCardDataToFormIframe, 500);
         }
     }
 
@@ -1072,9 +1078,13 @@
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
 
-            // 🟢 สั่งรีเซ็ตหน้าฟอร์มและสั่งลบข้อมูลบัตรใน Backend ทันทีที่ปิดหน้าต่าง
+            // 🟢 สั่งรีเซ็ตหน้าฟอร์มกลับหน้าแรก และสั่งลบข้อมูลบัตรใน Backend ทันทีที่ปิดหน้าต่าง
             if (window.formIframeSource) {
                 try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+            const iframe = document.getElementById('formServiceIframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
             }
             if (wsClient && wsClient.readyState === WebSocket.OPEN) {
                 wsClient.send(JSON.stringify({ action: 'delete-data' }));
@@ -1114,7 +1124,6 @@
         }
     }
 
-    // 🟢 เปิดหน้าต่างพรีวิว PDF บนตู้คีออสก์โดยไม่ดาวน์โหลดไฟล์เก็บลงเครื่อง
     function openKioskPdfPreview(pdfBase64, titleText) {
         currentPreviewPdfBase64 = pdfBase64;
         if (currentPreviewBlobUrl) {
@@ -1177,7 +1186,6 @@
                 })
             });
 
-            // สั่งลบข้อมูลบัตรใน Backend ทันทีหลังพิมพ์เสร็จ
             if (wsClient && wsClient.readyState === WebSocket.OPEN) {
                 wsClient.send(JSON.stringify({ action: 'delete-data' }));
             }
@@ -1202,19 +1210,14 @@
     window.addEventListener('message', async (event) => {
         if (!event.data) return;
 
-        // 🟢 รับสัญญาณการแตะหน้าจอ/พิมพ์งานจากใน Iframe ฟอร์ม เพื่อต่อเวลาไม่ให้หน้าจอตัดขณะก้มพิมพ์
         if (event.data.type === 'KIOSK_USER_ACTIVITY') {
             if (typeof updateInteractionTime === 'function') {
                 updateInteractionTime();
             }
         }
 
-        // 🟢 จดจำหน้าต่างชั้นในสุดของระบบฟอร์มตั้งแต่เริ่มเปิด
         if (event.data.type === 'REGISTER_FORM_IFRAME') {
             window.formIframeSource = event.source;
-            if (window.currentKioskCardData) {
-                sendCardDataToFormIframe();
-            }
         }
 
         if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
@@ -1229,7 +1232,15 @@
             }
         }
 
-        // 🟢 เมื่อระบบฟอร์มส่ง PDF มาให้พรีวิวเพื่อสั่งพิมพ์บนตู้คีออสก์ (ไม่ดาวน์โหลดลงเครื่อง)
+        // 🟢 ทันทีที่ฟอร์มดึงข้อมูลบัตรลงช่องกรอกเสร็จ สั่งลบข้อมูลบัตรหลังบ้าน (delete-data) และล้างความจำบัตรทันที
+        if (event.data.type === 'KIOSK_CARD_CONSUMED') {
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            clearIdCardDOM();
+            setPrintBtnReady(false);
+        }
+
         if (event.data.type === 'PREVIEW_FORM_PDF' && event.data.pdfBase64) {
             openKioskPdfPreview(event.data.pdfBase64, event.data.title || 'เอกสารคำขอ');
         }
@@ -1245,7 +1256,7 @@
     });
 
     // ==========================================
-    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้เกิน 30 วินาที -> ปิดหน้าฟอร์ม + ล้างข้อมูล + กลับหน้าโฮมอัตโนมัติ (วางตรงนี้ครับ)
+    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้เกิน 30 วินาที -> ปิดหน้าฟอร์ม + ล้างข้อมูล + กลับหน้าโฮมอัตโนมัติ
     // ==========================================
     setInterval(() => {
         const formModal = document.getElementById('formServiceModal');
@@ -1295,7 +1306,7 @@
     <source src="https://dlt-transport.github.io/sound/nongnamtang.mp3" type="audio/mpeg">
   </audio>
 
-    <script>
+  <script>
     let inspectorMatcher = null; 
     let hasGreetedVIPOnce = false; // 🔒 ตัวแปรล็อกถาวร (ทักครั้งเดียวจบ)
 
@@ -1370,7 +1381,7 @@
     }
 
     // ฟังก์ชันเปิดเรดาร์สแกนสดจากกล้อง (เวอร์ชันแซงคิวล็อกเดิมเฉพาะ VIP + ทักครั้งเดียวจบ)
-        function startInspectorScanner() {
+    function startInspectorScanner() {
         const videoEl = document.getElementById('video');
         const lottiePlayer = document.getElementById('lottie-canvas');
         
