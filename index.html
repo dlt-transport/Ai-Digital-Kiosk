@@ -1322,7 +1322,7 @@
         // อัปเดตตัวเลขนับถอยหลัง 15 วินาที
         if (formIdleSeconds > 30 && formIdleSeconds < 45 && isWarningPopupOpen) {
             const countEl = document.getElementById('kioskIdleCountdown');
-            if (countEl) countEl.innerText = String(105 - formIdleSeconds);
+            if (countEl) countEl.innerText = String(45 - formIdleSeconds);
         }
 
         // 🚶 หากครบ 45 วินาทีแล้วยังไม่มีใครกดปุ่ม แปลว่าเดินออกจากตู้จริง -> สั่งล้างข้อมูลและกลับหน้าโฮมทันที
