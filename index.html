@@ -1256,19 +1256,23 @@
     });
 
     // ==========================================
-    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ผ่อนผัน 30 วินาที + แจ้งเตือนนับถอยหลัง 15 วินาทีก่อนล้างฟอร์ม)
+    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ครบ 30 วินาทีเด้ง Popup ทันที + นับถอยหลัง 30 วินาทีก่อนล้างฟอร์ม)
     // ==========================================
-    let formIdleSeconds = 0;
+    let popupCountdownSeconds = 0;
     let isWarningPopupOpen = false;
 
-    // รีเซ็ตเวลานับถอยหลังทุกครั้งที่มีการแตะหน้าจอหรือพิมพ์ในฟอร์ม
+    // รีเซ็ตเวลาทุกครั้งที่มีการแตะหน้าจอหรือพิมพ์ในฟอร์ม
     window.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'KIOSK_USER_ACTIVITY') {
-            formIdleSeconds = 0;
+            popupCountdownSeconds = 0;
             isWarningPopupOpen = false;
+            window.isQueueOpen = true;
+            if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
+                personInFrameTime = Date.now();
+            }
+            if (typeof updateInteractionTime === 'function') updateInteractionTime();
             const warnBox = document.getElementById('kioskIdleWarnModal');
             if (warnBox) warnBox.style.display = 'none';
-            window.isQueueOpen = true;
         }
     });
 
@@ -1279,16 +1283,17 @@
         const isPreviewShowing = previewModal && previewModal.style.display === 'flex';
 
         if (!isFormShowing && !isPreviewShowing) {
-            formIdleSeconds = 0;
+            popupCountdownSeconds = 0;
             isWarningPopupOpen = false;
             return;
         }
 
-        // 🟢 ถ้ากล้องยังเห็นหน้าคน หรือเพิ่งแตะจอไม่เกิน 30 วินาทีล่าสุด ให้รีเซ็ตเวลาทั้งหมดเป็น 0 ทันที
-        const isUserActive = (window.isQueueOpen && personInFrameTime !== null && (Date.now() - lastSeenTime <= 30000));
+        // 🟢 ช่วง 30 วินาทีแรก: ถ้ากล้องยังเห็นหน้าคน หรือเพิ่งแตะจอไม่เกิน 30 วินาที
+        const isWithin30Sec = (personInFrameTime !== null && (Date.now() - lastSeenTime <= 30000));
         
-        if (isUserActive) {
-            formIdleSeconds = 0;
+        if (isWithin30Sec) {
+            popupCountdownSeconds = 0;
+            window.isQueueOpen = true;
             if (isWarningPopupOpen) {
                 isWarningPopupOpen = false;
                 const warnBox = document.getElementById('kioskIdleWarnModal');
@@ -1297,51 +1302,13 @@
             return;
         }
 
-        // 🟢 ถ้า Popup เตือนเด้งขึ้นมาแล้ว ให้นับถอยหลังต่อตรงๆ โดยไม่สนกล้อง (จนกว่าจะหมดเวลาหรือมีคนกดปุ่ม)
-        if (isWarningPopupOpen) {
-            formIdleSeconds++;
-            const remaining = 60 - formIdleSeconds; // นับถอยหลังต่ออีก 30 วินาที (จาก 30 ถึง 60)
-            
-            const countEl = document.getElementById('kioskIdleCountdown');
-            if (countEl) countEl.innerText = Math.max(0, remaining);
+        // ล็อกไว้ไม่ให้ script.js ตัดกลับหน้าโฮมเองระหว่างที่กำลังนับถอยหลังบน Popup
+        window.isQueueOpen = true;
 
-            // ครบกำหนด 60 วินาทีรวม (ไม่เห็นหน้า 30 วิ + นับถอยหลังบน Popup อีก 30 วิ) -> ตัดกลับโฮมทันที
-            if (formIdleSeconds >= 60) {
-                formIdleSeconds = 0;
-                isWarningPopupOpen = false;
-                window.isQueueOpen = false;
-
-                const warnBox = document.getElementById('kioskIdleWarnModal');
-                if (warnBox) warnBox.style.display = 'none';
-
-                if (previewModal) previewModal.style.display = 'none';
-                if (typeof closeKioskPdfPreview === 'function') closeKioskPdfPreview();
-                if (formModal) formModal.style.display = 'none';
-
-                if (window.formIframeSource) {
-                    try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
-                }
-                const iframe = document.getElementById('formServiceIframe');
-                if (iframe && iframe.contentWindow) {
-                    try { iframe.contentWindow.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
-                }
-
-                if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-                    wsClient.send(JSON.stringify({ action: 'delete-data' }));
-                }
-                if (typeof clearIdCardDOM === 'function') clearIdCardDOM();
-                if (typeof resetToHome === 'function') resetToHome();
-            }
-            return;
-        }
-
-        // เริ่มนับเวลาสะสมเมื่อกล้องไม่เห็นหน้าเกิน 30 วินาทีแรก
-        formIdleSeconds++;
-        window.isQueueOpen = true; 
-
-        // ⏳ เมื่อครบ 30 วินาทีเป๊ะ -> เด้ง Popup ถามทันที
-        if (formIdleSeconds >= 30 && !isWarningPopupOpen) {
+        // ⏳ ทันทีที่พ้น 30 วินาทีแรก -> เด้ง Popup ถามทันที (ไม่ต้องนับรออีก 30 วินาที)
+        if (!isWarningPopupOpen) {
             isWarningPopupOpen = true;
+            popupCountdownSeconds = 0;
             let warnBox = document.getElementById('kioskIdleWarnModal');
             if (!warnBox) {
                 warnBox = document.createElement('div');
@@ -1358,14 +1325,51 @@
                     </div>`;
                 document.body.appendChild(warnBox);
                 document.getElementById('btnKeepFormAlive').onclick = () => {
-                    formIdleSeconds = 0;
+                    popupCountdownSeconds = 0;
                     isWarningPopupOpen = false;
                     warnBox.style.display = 'none';
+                    window.isQueueOpen = true;
+                    if (typeof personInFrameTime !== 'undefined') personInFrameTime = Date.now();
                     if (typeof updateInteractionTime === 'function') updateInteractionTime();
                 };
             }
             document.getElementById('kioskIdleCountdown').innerText = '30';
             warnBox.style.display = 'flex';
+            return;
+        }
+
+        // 🟢 นับถอยหลังบน Popup 30 วินาที (จาก 30 ลงมาถึง 0)
+        popupCountdownSeconds++;
+        const remaining = 30 - popupCountdownSeconds;
+        const countEl = document.getElementById('kioskIdleCountdown');
+        if (countEl) countEl.innerText = Math.max(0, remaining);
+
+        // 🚶 เมื่อนับถอยหลังครบ 30 วินาทีแล้วยังไม่มีคนกดปุ่ม -> ล้างข้อมูลและกลับหน้าโฮมทันที
+        if (popupCountdownSeconds >= 30) {
+            popupCountdownSeconds = 0;
+            isWarningPopupOpen = false;
+            window.isQueueOpen = false;
+
+            const warnBox = document.getElementById('kioskIdleWarnModal');
+            if (warnBox) warnBox.style.display = 'none';
+
+            if (previewModal) previewModal.style.display = 'none';
+            if (typeof closeKioskPdfPreview === 'function') closeKioskPdfPreview();
+            if (formModal) formModal.style.display = 'none';
+
+            if (window.formIframeSource) {
+                try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+            const iframe = document.getElementById('formServiceIframe');
+            if (iframe && iframe.contentWindow) {
+                try { iframe.contentWindow.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
+            }
+
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            if (typeof clearIdCardDOM === 'function') clearIdCardDOM();
+            if (typeof resetToHome === 'function') resetToHome();
         }
     }, 1000);
 
