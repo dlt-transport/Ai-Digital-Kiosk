@@ -702,7 +702,7 @@
         if (setupModal) setupModal.style.display = 'none';
     }
 
-    function connectToKioskBackend(onFailCallback) {
+        function connectToKioskBackend(onFailCallback) {
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
             wsClient.send(JSON.stringify({ action: 'trigger-read' }));
             return;
@@ -769,6 +769,8 @@
                             window.isFormRequestingCardNow = false;
                             sendCardDataToFormIframe();
                         }
+                    } // 🟢 เติมวงเล็บปีกกาปิดของ if (cleanData.length > 0) ตรงนี้ที่หายไปครับ
+
                     if (response.photoBase64 && document.getElementById('id-card-render')) {
                         try {
                             const enhancedPhoto = await ยกระดับภาพพิมพ์(response.photoBase64, 40, 35);
