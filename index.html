@@ -764,8 +764,11 @@
                             amphoe: vDist || '',
                             province: vProv || ''
                         };
-                        sendCardDataToFormIframe();
-                    }
+                        // 🟢 ส่งข้อมูลเข้าฟอร์มเฉพาะเมื่อผู้ใช้กดปุ่มดึงข้อมูลเท่านั้น (ไม่กรอกเองตอนเสียบบัตร)
+                        if (window.isFormRequestingCardNow) {
+                            window.isFormRequestingCardNow = false;
+                            sendCardDataToFormIframe();
+                        }
                     if (response.photoBase64 && document.getElementById('id-card-render')) {
                         try {
                             const enhancedPhoto = await ยกระดับภาพพิมพ์(response.photoBase64, 40, 35);
@@ -1280,14 +1283,21 @@
             window.formIframeSource = event.source;
         }
 
-        // 🟢 เมื่อกดปุ่มสีเขียวดึงข้อมูลในฟอร์ม: บังคับอ่านบัตรใหม่สดๆ จากเครื่องอ่านเสมอ ไม่ใช้ค่าเก่าที่ค้างในตัวแปร
+        // 🟢 เมื่อผู้ใช้กดปุ่มสีเขียวดึงข้อมูลในฟอร์ม (เจ้าของประกอบการ หรือ ผู้รับมอบอำนาจ)
         if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
             window.formIframeSource = event.source;
-            window.currentKioskCardData = null; 
-            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-                wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+            if (window.currentKioskCardData) {
+                // ถ้าเสียบบัตรรอไว้อยู่แล้ว ส่งข้อมูลไปเติมตามปุ่มที่กดทันที
+                sendCardDataToFormIframe();
             } else {
-                connectToKioskBackend();
+                // ถ้ายังไม่มีข้อมูล ให้สั่งเครื่องอ่านบัตรอ่านเฉพาะจังหวะที่กดปุ่มนี้ (เปิดรับแค่ 3 วินาที)
+                window.isFormRequestingCardNow = true;
+                setTimeout(() => { window.isFormRequestingCardNow = false; }, 3000);
+                if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                    wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+                } else {
+                    connectToKioskBackend();
+                }
             }
         }
 
