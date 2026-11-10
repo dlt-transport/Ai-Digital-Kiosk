@@ -524,20 +524,20 @@
       </div>
   </div>
 
-  <!-- 🟢 หน้าต่างพรีวิวเอกสาร PDF สำหรับสั่งพิมพ์ทันทีบนตู้คีออสก์ (ไร้การดาวน์โหลดเก็บลงเครื่อง) -->
+  <!-- 🟢 หน้าต่างพรีวิวเอกสาร PDF สำหรับสั่งพิมพ์ทันทีบนตู้คีออสก์  -->
   <div id="kioskPdfPreviewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background-color: rgba(0,0,0,0.9); z-index: 100005; justify-content: center; align-items: center; backdrop-filter: blur(6px); box-sizing: border-box;">
       <div style="background-color: #1e293b; width: 96%; height: 96%; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
           <div style="background: #0f172a; color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155;">
               <div style="display: flex; align-items: center; gap: 10px;">
                   <span style="font-size: 22px;">📄</span>
                   <div>
-                      <div id="kioskPreviewTitle" style="font-weight: bold; font-size: 18px;">พรีวิวเอกสารคำขอก่อนสั่งพิมพ์</div>
-                      <div style="font-size: 12px; color: #94a3b8;">ตรวจสอบความถูกต้อง แล้วกดปุ่ม "สั่งพิมพ์เอกสารทันที" ด้านขวาบน (ระบบไม่บันทึกไฟล์ลงเครื่อง)</div>
+                      <div id="kioskPreviewTitle" style="font-weight: bold; font-size: 18px;">ตรวจสอบเอกสารคำขอก่อนสั่งพิมพ์</div>
+                      <div style="font-size: 12px; color: #94a3b8;">ตรวจสอบความถูกต้อง แล้วกดปุ่ม "สั่งพิมพ์เอกสาร"</div>
                   </div>
               </div>
               <div style="display: flex; gap: 12px;">
                   <button id="btnConfirmKioskPrint" onclick="confirmKioskFormPrint()" style="background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: bold; font-size: 17px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
-                      <i class="fas fa-print"></i> สั่งพิมพ์เอกสารทันที
+                      <i class="fas fa-print"></i> สั่งพิมพ์เอกสาร
                   </button>
                   <button onclick="closeKioskPdfPreview()" style="background: #ef4444; color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer;">
                       ✖ ปิดหน้าต่าง
@@ -654,16 +654,16 @@
 
     function startIdCardAutoClearTimer() {
         stopIdCardAutoClearTimer();
-        let timeLeft = 20; // ⏳ เวลาให้กดพิมพ์สำเนาบัตร 20 วินาที ถ้าไม่กดจะล็อกปุ่มและลบข้อมูลทิ้งอัตโนมัติ
+        let timeLeft = 15; // ⏳ เวลาให้กดพิมพ์สำเนาบัตร 20 วินาที ถ้าไม่กดจะล็อกปุ่มและลบข้อมูลทิ้งอัตโนมัติ
         const respEl = document.getElementById('response-text');
         if (respEl) {
-            respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา (ระบบจะล้างข้อมูลอัตโนมัติใน ${timeLeft} วินาที)`;
+            respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา`;
         }
 
         idCardCountdownInterval = setInterval(() => {
             timeLeft--;
             if (timeLeft > 0 && respEl) {
-                respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา (ระบบจะล้างข้อมูลอัตโนมัติใน ${timeLeft} วินาที)`;
+                respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา`;
             }
         }, 1000);
 
@@ -675,9 +675,9 @@
             clearIdCardDOM();
             setPrintBtnReady(false);
             if (respEl) {
-                respEl.innerText = "🔒 หมดเวลายืนยันการพิมพ์ ระบบได้ล้างข้อมูลบัตรประชาชนออกเรียบร้อยแล้ว กรุณาเสียบบัตรใหม่อีกครั้ง";
+                respEl.innerText = "🔒 หมดเวลายืนยันการพิมพ์ กรุณาเสียบบัตรใหม่อีกครั้ง";
             }
-        }, 20000);
+        }, 15000);
     }
 
     function setPrintBtnReady(ready) {
@@ -1368,7 +1368,7 @@
                     <div style="background:white;padding:30px;border-radius:24px;text-align:center;max-width:450px;width:90%;box-shadow:0 15px 40px rgba(0,0,0,0.5);">
                         <div style="font-size:48px;margin-bottom:10px;">⏳</div>
                         <h3 style="font-size:24px;font-weight:800;color:#2d3436;margin:0 0 10px 0;">ท่านยังใช้งานอยู่หรือไม่?</h3>
-                        <p style="font-size:18px;color:#636e72;margin-bottom:24px;">ระบบจะล้างข้อมูลและกลับสู่หน้าหลักใน <b id="kioskIdleCountdown" style="color:#e74c3c;font-size:22px;">30</b> วินาที</p>
+                        <p style="font-size:18px;color:#636e72;margin-bottom:24px;">ระบบจะกลับสู่หน้าหลักใน <b id="kioskIdleCountdown" style="color:#e74c3c;font-size:22px;">30</b> วินาที</p>
                         <button id="btnKeepFormAlive" style="width:100%;padding:16px;background:#00b894;color:white;border:none;border-radius:14px;font-size:20px;font-weight:bold;cursor:pointer;">
                             👆 ยังใช้งานอยู่ (กรอกข้อมูลต่อ)
                         </button>
