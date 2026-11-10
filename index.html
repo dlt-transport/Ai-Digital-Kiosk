@@ -644,6 +644,41 @@
 
     let wsClient = null;
     let wsConnected = false;
+    let idCardAutoClearTimer = null;
+    let idCardCountdownInterval = null;
+
+    function stopIdCardAutoClearTimer() {
+        if (idCardAutoClearTimer) { clearTimeout(idCardAutoClearTimer); idCardAutoClearTimer = null; }
+        if (idCardCountdownInterval) { clearInterval(idCardCountdownInterval); idCardCountdownInterval = null; }
+    }
+
+    function startIdCardAutoClearTimer() {
+        stopIdCardAutoClearTimer();
+        let timeLeft = 20; // ⏳ เวลาให้กดพิมพ์สำเนาบัตร 20 วินาที ถ้าไม่กดจะล็อกปุ่มและลบข้อมูลทิ้งอัตโนมัติ
+        const respEl = document.getElementById('response-text');
+        if (respEl) {
+            respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา (ระบบจะล้างข้อมูลอัตโนมัติใน ${timeLeft} วินาที)`;
+        }
+
+        idCardCountdownInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0 && respEl) {
+                respEl.innerText = `✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา (ระบบจะล้างข้อมูลอัตโนมัติใน ${timeLeft} วินาที)`;
+            }
+        }, 1000);
+
+        idCardAutoClearTimer = setTimeout(() => {
+            stopIdCardAutoClearTimer();
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+            clearIdCardDOM();
+            setPrintBtnReady(false);
+            if (respEl) {
+                respEl.innerText = "🔒 หมดเวลายืนยันการพิมพ์ ระบบได้ล้างข้อมูลบัตรประชาชนออกเรียบร้อยแล้ว กรุณาเสียบบัตรใหม่อีกครั้ง";
+            }
+        }, 20000);
+    }
 
     function setPrintBtnReady(ready) {
         const btn = document.querySelector('.btn-idcard-single');
@@ -694,12 +729,13 @@
             try {
                 const response = JSON.parse(event.data);
 
-                // 🟢 เมื่อดึงบัตรออก หรือสั่งลบข้อมูล ให้ล้างข้อมูลบัตรในระบบทันที
+                // 🟢 เมื่อดึงบัตรออก หรือสั่งลบข้อมูล ให้ล้างข้อมูลบัตรในระบบและล็อกปุ่มทันที
                 if (response.status === 'deleted' || response.status === 'removed' || response.status === 'empty' || response.status === 'no_card') {
+                    stopIdCardAutoClearTimer();
                     clearIdCardDOM();
                     setPrintBtnReady(false);
                     document.getElementById('response-text').innerText = "💳 ระบบพร้อมใช้งาน กรุณาเสียบบัตรประชาชนที่เครื่องอ่าน...";
-                    console.log('✅ [Backend] ลบข้อมูลบัตรแล้ว (ดึงบัตรออก)');
+                    console.log('✅ [Backend] ลบข้อมูลบัตรแล้ว');
                     return;
                 }
 
@@ -738,9 +774,11 @@
                             document.getElementById('id-card-render').src = response.photoBase64.startsWith('data:image') ? response.photoBase64 : `data:image/jpeg;base64,${response.photoBase64}`;
                         }
                     }
-                    document.getElementById('response-text').innerText = "✨ โหลดข้อมูลสำเร็จ! กรุณากดปุ่มด้านล่างเพื่อยืนยันการพิมพ์สำเนา";
                     setPrintBtnReady(true);
+                    // 🟢 เริ่มนับถอยหลัง 20 วินาทีเพื่อล้างข้อมูลอัตโนมัติหากไม่กดพิมพ์
+                    startIdCardAutoClearTimer();
                 } else {
+                    stopIdCardAutoClearTimer();
                     clearIdCardDOM();
                     setPrintBtnReady(false);
                 }
@@ -800,6 +838,7 @@
     }
 
     async function triggerIdCardPrint() {
+        stopIdCardAutoClearTimer(); // 🟢 หยุดเวลานับถอยหลังทันทีที่กดปุ่มพิมพ์
         const printBtn = document.querySelector('.btn-idcard-single');
 
         showSetupOnFail = true;
@@ -993,6 +1032,8 @@
     window.formIframeSource = null;
     let currentPreviewPdfBase64 = null;
     let currentPreviewBlobUrl = null;
+    let popupCountdownSeconds = 0;
+    let isWarningPopupOpen = false;
 
     function calcAgeFromDob(dobStr) {
         if (!dobStr || dobStr === '—') return '';
@@ -1055,7 +1096,15 @@
                 vipAudio.currentTime = 0;
             }
 
-            // 🟢 สั่งให้ฟอร์มรีเซ็ตกลับหน้าแรก (พับหมวดหมู่เก็บ) ทุกครั้งที่กดเปิดเข้ามาใหม่
+            // 🟢 ล้างข้อมูลบัตรที่อาจค้างอยู่จากหน้าแรกทิ้งทันทีที่เปิดหน้ากรอกแบบฟอร์ม
+            stopIdCardAutoClearTimer();
+            clearIdCardDOM();
+            setPrintBtnReady(false);
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'delete-data' }));
+            }
+
+            // 🟢 สั่งให้ฟอร์มรีเซ็ตกลับหน้าแรกทุกครั้งที่เปิดเข้ามาใหม่
             if (window.formIframeSource) {
                 try { window.formIframeSource.postMessage({ type: 'KIOSK_RESET_FORM' }, '*'); } catch (e) {}
             }
@@ -1066,8 +1115,9 @@
 
             modal.style.display = 'flex';
             updateInteractionTime();
-
-            connectToKioskBackend();
+            if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+                lastSeenTime = Date.now();
+            }
         }
     }
 
@@ -1210,30 +1260,40 @@
     window.addEventListener('message', async (event) => {
         if (!event.data) return;
 
+        // 🟢 รีเซ็ตเวลานับถอยหลังทุกครั้งที่มีการแตะหน้าจอหรือพิมพ์ในฟอร์ม
         if (event.data.type === 'KIOSK_USER_ACTIVITY') {
-            if (typeof updateInteractionTime === 'function') {
-                updateInteractionTime();
+            popupCountdownSeconds = 0;
+            isWarningPopupOpen = false;
+            window.isQueueOpen = true;
+            if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
+                personInFrameTime = Date.now();
             }
+            if (typeof updateInteractionTime === 'function') updateInteractionTime();
+            if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+                lastSeenTime = Date.now();
+            }
+            const warnBox = document.getElementById('kioskIdleWarnModal');
+            if (warnBox) warnBox.style.display = 'none';
         }
 
         if (event.data.type === 'REGISTER_FORM_IFRAME') {
             window.formIframeSource = event.source;
         }
 
+        // 🟢 เมื่อกดปุ่มสีเขียวดึงข้อมูลในฟอร์ม: บังคับอ่านบัตรใหม่สดๆ จากเครื่องอ่านเสมอ ไม่ใช้ค่าเก่าที่ค้างในตัวแปร
         if (event.data.type === 'REQUEST_KIOSK_IDCARD') {
             window.formIframeSource = event.source;
-            if (window.currentKioskCardData) {
-                sendCardDataToFormIframe();
+            window.currentKioskCardData = null; 
+            if (wsClient && wsClient.readyState === WebSocket.OPEN) {
+                wsClient.send(JSON.stringify({ action: 'trigger-read' }));
             } else {
                 connectToKioskBackend();
-                if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-                    wsClient.send(JSON.stringify({ action: 'trigger-read' }));
-                }
             }
         }
 
-        // 🟢 ทันทีที่ฟอร์มดึงข้อมูลบัตรลงช่องกรอกเสร็จ สั่งลบข้อมูลบัตรหลังบ้าน (delete-data) และล้างความจำบัตรทันที
+        // 🟢 ทันทีที่ฟอร์มดึงข้อมูลบัตรลงช่องกรอกเสร็จ สั่งลบข้อมูลบัตรหลังบ้าน (delete-data) และล็อกปุ่มหน้าแรกทันที
         if (event.data.type === 'KIOSK_CARD_CONSUMED') {
+            stopIdCardAutoClearTimer();
             if (wsClient && wsClient.readyState === WebSocket.OPEN) {
                 wsClient.send(JSON.stringify({ action: 'delete-data' }));
             }
@@ -1252,34 +1312,15 @@
             if (window.queueAudioDelayTimer) clearTimeout(window.queueAudioDelayTimer);
             if (typeof stopAllSpeech === 'function') stopAllSpeech();
             updateInteractionTime();
+            if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+                lastSeenTime = Date.now();
+            }
         }
     });
 
     // ==========================================
     // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ครบ 30 วินาทีจริงเด้ง Popup ทันที + นับถอยหลัง 30 วินาทีก่อนล้างฟอร์ม)
     // ==========================================
-    let popupCountdownSeconds = 0;
-    let isWarningPopupOpen = false;
-
-    // รีเซ็ตเวลาทุกครั้งที่มีการแตะหน้าจอหรือพิมพ์ในฟอร์ม
-    window.addEventListener('message', (event) => {
-        if (event.data && event.data.type === 'KIOSK_USER_ACTIVITY') {
-            popupCountdownSeconds = 0;
-            isWarningPopupOpen = false;
-            window.isQueueOpen = true;
-            if (typeof personInFrameTime !== 'undefined' && personInFrameTime === null) {
-                personInFrameTime = Date.now();
-            }
-            if (typeof updateInteractionTime === 'function') updateInteractionTime();
-            // 🟢 ตัดเวลาที่ถูกบวกเผื่อเกินจริงใน script.js ออก เพื่อให้นับ 30 วินาทีตามจริง
-            if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
-                lastSeenTime = Date.now();
-            }
-            const warnBox = document.getElementById('kioskIdleWarnModal');
-            if (warnBox) warnBox.style.display = 'none';
-        }
-    });
-
     setInterval(() => {
         const formModal = document.getElementById('formServiceModal');
         const previewModal = document.getElementById('kioskPdfPreviewModal');
