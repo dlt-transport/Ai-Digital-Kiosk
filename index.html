@@ -1256,7 +1256,7 @@
     });
 
     // ==========================================
-    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ครบ 30 วินาทีเด้ง Popup ทันที + นับถอยหลัง 30 วินาทีก่อนล้างฟอร์ม)
+    // 🏠 ระบบตรวจสอบคนเดินออกจากตู้ (ครบ 30 วินาทีจริงเด้ง Popup ทันที + นับถอยหลัง 30 วินาทีก่อนล้างฟอร์ม)
     // ==========================================
     let popupCountdownSeconds = 0;
     let isWarningPopupOpen = false;
@@ -1271,6 +1271,10 @@
                 personInFrameTime = Date.now();
             }
             if (typeof updateInteractionTime === 'function') updateInteractionTime();
+            // 🟢 ตัดเวลาที่ถูกบวกเผื่อเกินจริงใน script.js ออก เพื่อให้นับ 30 วินาทีตามจริง
+            if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+                lastSeenTime = Date.now();
+            }
             const warnBox = document.getElementById('kioskIdleWarnModal');
             if (warnBox) warnBox.style.display = 'none';
         }
@@ -1288,7 +1292,12 @@
             return;
         }
 
-        // 🟢 ช่วง 30 วินาทีแรก: ถ้ากล้องยังเห็นหน้าคน หรือเพิ่งแตะจอไม่เกิน 30 วินาที
+        // 🟢 ป้องกันไม่ให้ updateInteractionTime() ใน script.js บวกเวลาล่วงหน้าเกินเวลาปัจจุบัน
+        if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+            lastSeenTime = Date.now();
+        }
+
+        // 🟢 ช่วง 30 วินาทีแรก: ถ้ากล้องยังเห็นหน้าคน หรือเพิ่งแตะจอไม่เกิน 30 วินาทีจริง
         const isWithin30Sec = (personInFrameTime !== null && (Date.now() - lastSeenTime <= 30000));
         
         if (isWithin30Sec) {
@@ -1305,7 +1314,7 @@
         // ล็อกไว้ไม่ให้ script.js ตัดกลับหน้าโฮมเองระหว่างที่กำลังนับถอยหลังบน Popup
         window.isQueueOpen = true;
 
-        // ⏳ ทันทีที่พ้น 30 วินาทีแรก -> เด้ง Popup ถามทันที (ไม่ต้องนับรออีก 30 วินาที)
+        // ⏳ ทันทีที่ครบ 30 วินาทีแรก -> เด้ง Popup ถามทันที
         if (!isWarningPopupOpen) {
             isWarningPopupOpen = true;
             popupCountdownSeconds = 0;
@@ -1331,6 +1340,9 @@
                     window.isQueueOpen = true;
                     if (typeof personInFrameTime !== 'undefined') personInFrameTime = Date.now();
                     if (typeof updateInteractionTime === 'function') updateInteractionTime();
+                    if (typeof lastSeenTime !== 'undefined' && lastSeenTime > Date.now()) {
+                        lastSeenTime = Date.now();
+                    }
                 };
             }
             document.getElementById('kioskIdleCountdown').innerText = '30';
