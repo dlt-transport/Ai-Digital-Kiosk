@@ -646,6 +646,9 @@
     let wsConnected = false;
     let idCardAutoClearTimer = null;
     let idCardCountdownInterval = null;
+    let showSetupOnFail = false;     // 🟢 ตัวแปรควบคุมการแสดง Popup ติดตั้ง
+    let wsReconnectEnabled = true;   // 🟢 เปิดให้ค้นหาหลังบ้านอัตโนมัติตั้งแต่เปิดเครื่อง
+    let wsReconnectTimer = null;     // 🟢 ตัวจับเวลาค้นหาหลังบ้านซ้ำเบื้องหลัง
 
     function stopIdCardAutoClearTimer() {
         if (idCardAutoClearTimer) { clearTimeout(idCardAutoClearTimer); idCardAutoClearTimer = null; }
@@ -702,9 +705,13 @@
         if (setupModal) setupModal.style.display = 'none';
     }
 
-        function connectToKioskBackend(onFailCallback) {
+    function connectToKioskBackend(onFailCallback) {
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
             wsClient.send(JSON.stringify({ action: 'trigger-read' }));
+            return;
+        }
+        // 🟢 ป้องกันการเปิดซ้อนขณะกำลังเชื่อมต่อ
+        if (wsClient && wsClient.readyState === WebSocket.CONNECTING) {
             return;
         }
         if (wsClient) try { wsClient.close(); } catch(e) {}
@@ -714,6 +721,12 @@
         wsClient.onopen = () => {
             console.log('✅ เชื่อมต่อระบบหลังบ้านสำเร็จ');
             wsConnected = true;
+            // 🟢 เมื่อเจอหลังบ้านแล้ว ให้หยุดการวนค้นหาซ้ำ และปิด Popup ติดตั้ง (ถ้าเปิดอยู่)
+            if (wsReconnectTimer) {
+                clearInterval(wsReconnectTimer);
+                wsReconnectTimer = null;
+            }
+            closeSetupModal();
             setPrintBtnReady(false);
             wsClient.send(JSON.stringify({ action: 'trigger-read' }));
             document.getElementById('response-text').innerText = "💳 ระบบพร้อมใช้งาน กรุณาเสียบบัตรประชาชนที่เครื่องอ่าน...";
@@ -722,7 +735,8 @@
         wsClient.onerror = function() {
             wsConnected = false;
             console.error('❌ เชื่อมต่อ backend ไม่ได้');
-            if (onFailCallback) onFailCallback();
+            // 🟢 เช็กว่าเป็นฟังก์ชันก่อนเรียก ป้องกัน Error ตอนเริ่มหน้าเว็บด้วย DOMContentLoaded
+            if (typeof onFailCallback === 'function') onFailCallback();
         };
 
         wsClient.onmessage = async function(event) {
@@ -793,6 +807,14 @@
         wsClient.onclose = () => {
             wsConnected = false;
             console.log('🔴 [WebSocket] Disconnected.');
+            // 🟢 สั่งให้ค้นหาไฟล์หลังบ้านซ้ำเบื้องหลังทุกๆ 2 วินาที จนกว่าจะเจอ
+            if (wsReconnectEnabled && !wsReconnectTimer) {
+                wsReconnectTimer = setInterval(() => {
+                    if (!wsClient || wsClient.readyState === WebSocket.CLOSED) {
+                        connectToKioskBackend();
+                    }
+                }, 2000);
+            }
         };
     }
 
@@ -1439,7 +1461,7 @@
         }
     }, 1000);
 
-    window.addEventListener('DOMContentLoaded', connectToKioskBackend);
+    window.addEventListener('DOMContentLoaded', () => connectToKioskBackend());
   </script>
 
   <!-- =================================================================== -->
