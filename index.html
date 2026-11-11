@@ -1237,6 +1237,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     type: 'copy',
+                    duplex: true,
                     pdfBase64: formattedBase64
                 })
             });
