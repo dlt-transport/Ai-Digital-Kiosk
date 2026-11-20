@@ -254,6 +254,7 @@ function completeLoading() {
                 const homeMsg = (window.currentLang === 'th' ? "กดปุ่มไมค์เพื่อสอบถามข้อมูลได้เลยครับ" : "Please tap the microphone.");
                 displayResponse(homeMsg);
                 renderFAQButtons();
+                if (typeof applyFestivalThemeFromSheet === 'function') applyFestivalThemeFromSheet();
                 initCamera();
                 initSpeechRecognition();
                 console.log("🏠 [System] Home screen ready.");
@@ -988,7 +989,7 @@ function getResponse(userQuery) {
         let exactMatchFound = false;
         
         for (const sheetName of Object.keys(window.localDatabase)) {
-            if (["Lottie_State", "Config", "FAQ"].includes(sheetName)) continue;
+            if (["Lottie_State", "Config", "FAQ", "Festival"].includes(sheetName)) continue;
             for (const item of window.localDatabase[sheetName]) {
                 const rawKeys = item[0] ? item[0].toString().toLowerCase() : "";
                 if (!rawKeys) continue;
