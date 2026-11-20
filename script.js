@@ -989,7 +989,7 @@ function getResponse(userQuery) {
         let exactMatchFound = false;
         
         for (const sheetName of Object.keys(window.localDatabase)) {
-            if (["Lottie_State", "Config", "FAQ", "Festival"].includes(sheetName)) continue;
+            if (["Lottie_State", "Config", "FAQ", "Feedback", "Festival"].includes(sheetName)) continue;
             for (const item of window.localDatabase[sheetName]) {
                 const rawKeys = item[0] ? item[0].toString().toLowerCase() : "";
                 if (!rawKeys) continue;
