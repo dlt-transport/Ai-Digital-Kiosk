@@ -336,6 +336,110 @@
     .feedback-btn:active { transform: scale(0.95); }
     .btn-correct { background: #2ecc71; color: white; }
     .btn-incorrect { background: #e74c3c; color: white; }
+
+    /* ========================================================= */
+    /* 🏮 ระบบตกแต่งเทศกาลรอบตัวน้องนำทาง (เพิ่มใหม่ ไม่กระทบโค้ดเดิม) */
+    /* ========================================================= */
+    .avatar-stage {
+      position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1.5dvh;
+      flex-shrink: 0;
+    }
+    .avatar-wrapper {
+      position: relative;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .avatar-stage .avatar-container {
+      margin-bottom: 0;
+      position: relative;
+      z-index: 2;
+      transition: box-shadow 0.6s ease, border-color 0.6s ease;
+    }
+    .avatar-container.festival-active {
+      border: 3px solid var(--festival-color, #f59e0b);
+      box-shadow: 0 0 22px color-mix(in srgb, var(--festival-color, #f59e0b) 35%, transparent),
+                  0 5px 15px rgba(0, 0, 0, 0.08);
+    }
+    .festival-prop {
+      position: absolute;
+      pointer-events: none;
+      object-fit: contain;
+      display: none;
+      will-change: transform, filter;
+    }
+    .festival-prop-right {
+      right: clamp(-125px, -16vw, -75px);
+      bottom: -14px;
+      width: clamp(95px, 14dvh, 145px);
+      height: auto;
+      z-index: 4;
+    }
+    .festival-prop-left {
+      left: clamp(-110px, -14vw, -65px);
+      bottom: -8px;
+      width: clamp(78px, 11.5dvh, 118px);
+      height: auto;
+      z-index: 3;
+      animation-delay: -1.7s !important;
+    }
+    .festival-badge {
+      position: absolute;
+      bottom: -11px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--festival-color, #f59e0b);
+      color: #ffffff;
+      font-family: 'Kanit', sans-serif;
+      font-size: clamp(11px, 1.3vw, 13px);
+      font-weight: 500;
+      padding: 3px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+      z-index: 5;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
+      border: 2px solid #ffffff;
+      display: none;
+      pointer-events: none;
+      letter-spacing: 0.3px;
+    }
+    .anim-float {
+      animation: festivalFloatWater 3.8s ease-in-out infinite;
+    }
+    @keyframes festivalFloatWater {
+      0%, 100% {
+        transform: translateY(0px) rotate(-2deg) scale(1);
+        filter: drop-shadow(0 6px 10px rgba(245, 158, 11, 0.28));
+      }
+      50% {
+        transform: translateY(-7px) rotate(2.5deg) scale(1.03);
+        filter: drop-shadow(0 10px 16px rgba(251, 191, 36, 0.5));
+      }
+    }
+    .anim-sway {
+      transform-origin: top center;
+      animation: festivalSway 3.2s ease-in-out infinite;
+    }
+    @keyframes festivalSway {
+      0%, 100% { transform: rotate(-6deg); }
+      50% { transform: rotate(6deg); }
+    }
+    .anim-bounce {
+      animation: festivalBounce 2.6s ease-in-out infinite;
+    }
+    @keyframes festivalBounce {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-9px) scale(1.05); }
+    }
+    @media (max-width: 480px) {
+      .festival-prop-right { right: -64px; width: 82px; }
+      .festival-prop-left  { left: -56px;  width: 68px; }
+    }
   </style>
 </head>
 <body>
@@ -378,8 +482,15 @@
     </div>
 
     <div class="scroll-zone">
-      <div class="avatar-container">
-        <lottie-player id="lottie-canvas" src="https://lottie.host/568e8594-a319-4491-bf10-a0f5c012fc76/6S3urqybG5.json" background="transparent" speed="1" loop autoplay></lottie-player>
+      <div class="avatar-stage" id="avatar-stage">
+        <div class="avatar-wrapper">
+          <img id="festival-prop-left" class="festival-prop festival-prop-left" src="" alt="" onerror="this.style.display='none'">
+          <div class="avatar-container">
+            <lottie-player id="lottie-canvas" src="https://lottie.host/568e8594-a319-4491-bf10-a0f5c012fc76/6S3urqybG5.json" background="transparent" speed="1" loop autoplay></lottie-player>
+          </div>
+          <img id="festival-prop-right" class="festival-prop festival-prop-right" src="" alt="" onerror="this.style.display='none'">
+          <div id="festival-badge" class="festival-badge"></div>
+        </div>
       </div>
 
       <div class="display-box" id="response-text">กำลังเริ่มต้นระบบ...</div>
@@ -1622,6 +1733,149 @@
             }
         }, 500);
     }
+  </script>
+
+  <!-- =================================================================== -->
+  <!-- 🏮 ระบบเปลี่ยนพร็อพและธีมประจำเทศกาลอัตโนมัติจาก Google Sheet (แท็บ Festival) -->
+  <!-- =================================================================== -->
+  <script>
+    function parseFestivalDate(val) {
+        if (!val) return null;
+        const str = val.toString().trim();
+
+        // 1. กรณี Google Sheets ส่งมาเป็น Date ISO String (เช่น 2026-11-19T17:00:00.000Z)
+        if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+            const d = new Date(str);
+            if (!isNaN(d)) {
+                return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+            }
+        }
+
+        // 2. กรณีพิมพ์ YYYY-MM-DD (รองรับทั้ง ค.ศ. และ พ.ศ.)
+        const ymd = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (ymd) {
+            let y = parseInt(ymd[1], 10);
+            if (y > 2400) y -= 543;
+            return { year: y, month: parseInt(ymd[2], 10), day: parseInt(ymd[3], 10) };
+        }
+
+        // 3. กรณีพิมพ์ DD/MM/YYYY (รองรับทั้ง ค.ศ. และ พ.ศ.)
+        const dmy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmy) {
+            let y = parseInt(dmy[3], 10);
+            if (y > 2400) y -= 543;
+            return { year: y, month: parseInt(dmy[2], 10), day: parseInt(dmy[1], 10) };
+        }
+
+        // 4. กรณีพิมพ์ MM-DD สำหรับเทศกาลประจำปี (เช่น 11-20 หรือ 12-25)
+        const md = str.match(/^(\d{1,2})-(\d{1,2})$/);
+        if (md) {
+            return { year: null, month: parseInt(md[1], 10), day: parseInt(md[2], 10) };
+        }
+
+        return null;
+    }
+
+    function isTodayInFestivalRange(startVal, endVal) {
+        const start = parseFestivalDate(startVal);
+        const end = parseFestivalDate(endVal);
+        if (!start || !end) return false;
+
+        const now = new Date();
+        const tYear = now.getFullYear();
+        const tMonth = now.getMonth() + 1;
+        const tDay = now.getDate();
+
+        // กรณีระบุปีชัดเจนทั้งวันเริ่มและวันจบ
+        if (start.year && end.year) {
+            const todayNum = tYear * 10000 + tMonth * 100 + tDay;
+            const startNum = start.year * 10000 + start.month * 100 + start.day;
+            const endNum = end.year * 10000 + end.month * 100 + end.day;
+            return todayNum >= startNum && todayNum <= endNum;
+        }
+
+        // กรณีระบุเฉพาะ เดือน-วัน (ใช้ซ้ำทุกปี + รองรับช่วงข้ามปี เช่น 12-20 ถึง 01-05)
+        const todayMD = tMonth * 100 + tDay;
+        const startMD = start.month * 100 + start.day;
+        const endMD = end.month * 100 + end.day;
+
+        if (startMD <= endMD) {
+            return todayMD >= startMD && todayMD <= endMD;
+        } else {
+            return todayMD >= startMD || todayMD <= endMD;
+        }
+    }
+
+    function applyFestivalThemeFromSheet() {
+        if (!window.localDatabase || !window.localDatabase["Festival"]) return;
+
+        const rows = window.localDatabase["Festival"].slice(1);
+        const avatarBox = document.querySelector('.avatar-container');
+        const propRight = document.getElementById('festival-prop-right');
+        const propLeft = document.getElementById('festival-prop-left');
+        const badgeEl = document.getElementById('festival-badge');
+
+        if (avatarBox) avatarBox.classList.remove('festival-active');
+        if (propRight) { propRight.style.display = 'none'; propRight.className = 'festival-prop festival-prop-right'; }
+        if (propLeft)  { propLeft.style.display = 'none';  propLeft.className = 'festival-prop festival-prop-left'; }
+        if (badgeEl)   { badgeEl.style.display = 'none'; }
+
+        for (const row of rows) {
+            const name      = (row[0] || '').toString().trim();
+            const startDate = row[1];
+            const endDate   = row[2];
+            const imgRight  = (row[3] || '').toString().trim();
+            const imgLeft   = (row[4] || '').toString().trim();
+            const badgeText = (row[5] || '').toString().trim();
+            const themeCol  = (row[6] || '#f59e0b').toString().trim();
+            const animType  = (row[7] || 'float').toString().trim().toLowerCase();
+            const status    = (row[8] || 'ON').toString().trim().toUpperCase();
+
+            if (status !== 'ON') continue;
+            if (!isTodayInFestivalRange(startDate, endDate)) continue;
+
+            const animClass = animType === 'sway' ? 'anim-sway' : (animType === 'bounce' ? 'anim-bounce' : 'anim-float');
+
+            document.documentElement.style.setProperty('--festival-color', themeCol);
+            if (avatarBox) avatarBox.classList.add('festival-active');
+
+            if (propRight && imgRight) {
+                propRight.src = imgRight;
+                propRight.classList.add(animClass);
+                propRight.style.display = 'block';
+            }
+
+            if (propLeft && imgLeft) {
+                propLeft.src = imgLeft;
+                propLeft.classList.add(animClass);
+                propLeft.style.display = 'block';
+            }
+
+            if (badgeEl && badgeText) {
+                badgeEl.innerText = badgeText;
+                badgeEl.style.display = 'block';
+            }
+
+            console.log(`🏮 [Festival] เปิดใช้งานธีมเทศกาล: ${name} (${animType})`);
+            break;
+        }
+    }
+
+    // รอจนกว่า script.js จะโหลด window.localDatabase จาก Google Sheets เสร็จ แล้วทำงานอัตโนมัติ
+    (function watchFestivalDatabase() {
+        let attempts = 0;
+        const timer = setInterval(() => {
+            attempts++;
+            if (window.localDatabase) {
+                clearInterval(timer);
+                applyFestivalThemeFromSheet();
+                // ตรวจสอบวันที่ซ้ำทุก 1 ชั่วโมง เผื่อตู้เปิดค้างข้ามวัน
+                setInterval(applyFestivalThemeFromSheet, 3600000);
+            } else if (attempts >= 120) {
+                clearInterval(timer);
+            }
+        }, 500);
+    })();
   </script>
 </body>
 </html>
