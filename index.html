@@ -1338,9 +1338,17 @@
 
         const previewModal = document.getElementById('kioskPdfPreviewModal');
         if (previewModal) previewModal.style.display = 'flex';
+
+        // 🔊 เพิ่มตรงนี้: เล่นเสียงแจ้งเตือนให้ตรวจสอบความถูกต้องก่อนสั่งพิมพ์
+        if (window.currentLang === 'th' && typeof playAudioLink === 'function') {
+            playAudioLink("https://dlt-transport.github.io/sound/recheck.wav", () => {
+                window.isBusy = false;
+            });
+        }
     }
 
     function closeKioskPdfPreview() {
+        if (typeof stopAllSpeech === 'function') stopAllSpeech();
         const previewModal = document.getElementById('kioskPdfPreviewModal');
         if (previewModal) previewModal.style.display = 'none';
 
@@ -1356,6 +1364,7 @@
 
     async function confirmKioskFormPrint() {
         if (!currentPreviewPdfBase64) return;
+        if (typeof stopAllSpeech === 'function') stopAllSpeech();
         const btn = document.getElementById('btnConfirmKioskPrint');
         if (btn) {
             btn.disabled = true;
