@@ -71,7 +71,7 @@
       width: 100%;
       flex-shrink: 0;
       background: var(--bg);
-      padding-bottom: 10px; 
+      padding-bottom: 4px; /* ลดจาก 10px */
     }
 
     /* 🌟 สร้าง "สปริงล่องหน" หนุนกล่องข้อความจากด้านล่างสุด */
@@ -79,10 +79,8 @@
       content: '';
       display: block;
       width: 100%;
-      /* สปริงกางออกปกติ 18vh แต่ยอมหดตัวเร็วมากเมื่อถูกทับ (shrink: 10) */
-      flex: 0 10 18vh; 
-      /* ลิมิตการยุบตัว: โดนข้อความยาวๆ ทับจนสุด จะยุบเหลือ 15px (ปุ่มไมค์จะไม่ตกขอบ) */
-      min-height: 15px; 
+      flex: 0 10 2vh; /* ลดจาก 18vh เหลือ 2vh (ถ้าอยากให้ชิดขอบล่างสุดตั้งเป็น 0px) */
+      min-height: 4px; /* ลดจาก 15px (ถ้าอยากให้ชิดขอบล่างสุดตั้งเป็น 0px) */
     }
     
     .top-controls { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5dvh; flex-shrink: 0; }
@@ -1369,6 +1367,9 @@
 
     function closeKioskPdfPreview() {
         if (typeof stopAllSpeech === 'function') stopAllSpeech();
+        const cancelModal = document.getElementById('kioskCancelPrintModal');
+        if (cancelModal) cancelModal.style.display = 'none';
+
         const previewModal = document.getElementById('kioskPdfPreviewModal');
         if (previewModal) previewModal.style.display = 'none';
 
